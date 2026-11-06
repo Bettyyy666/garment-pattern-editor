@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Garment Pattern Editor</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+    />
+    <link rel="stylesheet" href="css/styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header>
+        <div class="brand">
+          <svg
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.6"
+            aria-hidden="true"
+          >
+            <path d="M6 3l4 1.5L9 10l3-5.3L16 6l-1 15H6z" />
+            <path d="M11 21l.5-8" stroke-dasharray="2 2" />
+          </svg>
+          Garment Pattern Editor <small>2D PATTERN · CM</small>
+        </div>
+        <div class="spacer"></div>
+        <div class="hgroup">
+          <button class="btn icon" id="undo" title="Undo (Ctrl+Z)" aria-label="Undo">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M9 14L4 9l5-5" />
+              <path d="M4 9h10a6 6 0 010 12h-3" />
+            </svg>
+          </button>
+          <button class="btn icon" id="redo" title="Redo (Ctrl+Shift+Z)" aria-label="Redo">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M15 14l5-5-5-5" />
+              <path d="M20 9H10a6 6 0 000 12h3" />
+            </svg>
+          </button>
+        </div>
+        <button class="btn" id="fit" title="Fit all panels (F)">Fit</button>
+        <label class="btn" for="file" title="Open a PNG pattern image or a GarmentCode specification JSON"
+          >Open file</label
+        >
+        <button class="btn primary" id="save" title="Save edits into the specification (Ctrl+S)">Save</button>
+        <button class="btn" id="io">Export JSON</button>
+        <button class="btn hide-sm" id="reset">Reset sample</button>
+      </header>
+
+      <nav class="tools" aria-label="Tools">
+        <button class="tool" data-tool="select" title="Select & move (V)" aria-label="Select">
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linejoin="round"
+          >
+            <path d="M5 3l13 8-6 1.5L9 19z" /></svg
+          ><kbd>V</kbd>
+        </button>
+        <button class="tool" data-tool="pan" title="Pan (H, or hold Space)" aria-label="Pan">
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+          >
+            <path
+              d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"
+            /></svg
+          ><kbd>H</kbd>
+        </button>
+        <div class="tool-sep"></div>
+        <button class="tool" data-tool="point" title="Point (P)" aria-label="Point">
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+          >
+            <circle cx="12" cy="12" r="3.2" fill="currentColor" />
+            <path d="M12 3v4M12 17v4M3 12h4M17 12h4" /></svg
+          ><kbd>P</kbd>
+        </button>
+        <button class="tool" data-tool="line" title="Line (L)" aria-label="Line">
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+          >
+            <path d="M6 18L18 6" />
+            <circle cx="5" cy="19" r="2" fill="currentColor" />
+            <circle cx="19" cy="5" r="2" fill="currentColor" /></svg
+          ><kbd>L</kbd>
+        </button>
+        <button class="tool" data-tool="curve" title="Curve (C)" aria-label="Curve">
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+          >
+            <path d="M4 19C7 5 16 20 20 5" />
+            <circle cx="4" cy="19" r="1.8" fill="currentColor" />
+            <circle cx="20" cy="5" r="1.8" fill="currentColor" /></svg
+          ><kbd>C</kbd>
+        </button>
+        <button class="tool" data-tool="erase" title="Erase marks (E)" aria-label="Erase">
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linejoin="round"
+          >
+            <path d="M4 15l9-9 6 6-7 7H8z" />
+            <path d="M9 10l6 6M13 19h8" /></svg
+          ><kbd>E</kbd>
+        </button>
+      </nav>
+
+      <main>
+        <svg id="canvas" aria-label="Pattern canvas"><g id="world"></g></svg>
+        <div class="status">
+          <span class="chip" id="hint"></span>
+          <span class="chip mono" id="pos">x — y —</span>
+          <span class="chip mono" id="zoom">100%</span>
+        </div>
+        <div class="toast" id="toast" hidden></div>
+      </main>
+
+      <aside>
+        <section>
+          <h2>Input</h2>
+          <label class="drop" for="file">
+            <svg
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.7"
+              aria-hidden="true"
+            >
+              <path d="M12 15V4M7.5 8.5L12 4l4.5 4.5" />
+              <path d="M4 15v4h16v-4" />
+            </svg>
+            <span
+              ><b>Open a pattern</b><br />PNG / JPG image or GarmentCode specification JSON. You can also drop
+              a file on the canvas.</span
+            >
+          </label>
+          <input type="file" id="file" accept=".png,.jpg,.jpeg,.webp,.json,image/*,application/json" hidden />
+          <p class="hint-text" id="src-info">Showing the built-in bodice sample.</p>
+        </section>
+        <section>
+          <h2>Specification</h2>
+          <div class="spec-row">
+            <b id="spec-name" class="mono">specification.json</b
+            ><span id="spec-state" class="pill ok">Saved</span>
+          </div>
+          <p class="hint-text" id="spec-meta"></p>
+          <div class="row">
+            <button class="btn primary" id="spec-save" style="flex: 1; justify-content: center">Save</button
+            ><button class="btn" id="spec-view" style="flex: 1; justify-content: center">
+              View &amp; export
+            </button>
+          </div>
+        </section>
+        <section>
+          <h2>Design operations</h2>
+          <button class="btn primary" id="op-split" title="Split (S)">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M3 4h7v16H3zM14 4h7v16h-7z" />
+            </svg>
+            Split along cut
+          </button>
+          <p class="hint-text" id="split-hint"></p>
+          <div class="op-grid">
+            <button class="btn" id="op-mirror">Mirror</button>
+            <button class="btn" id="op-rotate">Rotate 90°</button>
+            <button class="btn" id="op-dup">Duplicate</button>
+            <button class="btn danger" id="op-del">Delete</button>
+          </div>
+          <button class="linkbtn" id="op-clear">Clear all points and lines</button>
+        </section>
+        <section>
+          <h2>Selection</h2>
+          <div id="sel-info"></div>
+        </section>
+        <section>
+          <h2 style="display: flex; justify-content: space-between">
+            Panels <span id="stitch-count"></span>
+          </h2>
+          <ul class="plist" id="plist"></ul>
+          <div class="row">
+            <select class="input" id="tpl" aria-label="Panel template">
+              <option value="front">Front bodice</option>
+              <option value="back">Back bodice</option>
+              <option value="sleeve">Sleeve</option>
+              <option value="rect">Rectangle 20×30</option>
+            </select>
+            <button class="btn" id="add-tpl">Add panel</button>
+          </div>
+        </section>
+        <section>
+          <h2>View</h2>
+          <label class="check"><input type="checkbox" id="opt-grid" checked /> 1 cm grid</label>
+          <label class="check"><input type="checkbox" id="opt-sa" /> Seam allowance (1 cm)</label>
+          <label class="check"><input type="checkbox" id="opt-measure" checked /> Line lengths</label>
+          <label class="check"><input type="checkbox" id="opt-verts" /> Vertices</label>
+          <label class="check"><input type="checkbox" id="opt-stitch" checked /> Stitches</label>
+          <label class="check"><input type="checkbox" id="opt-under" checked /> Source image underlay</label>
+        </section>
+      </aside>
+    </div>
+
+    <div class="modal" id="modal" hidden>
+      <div class="modal-card" role="dialog" aria-labelledby="modal-title">
+        <h3 id="modal-title">GarmentCode specification</h3>
+        <p class="hint-text" id="exp-note"></p>
+        <textarea id="json" spellcheck="false" aria-label="Pattern JSON"></textarea>
+        <div class="row" style="justify-content: flex-end">
+          <button class="btn" id="json-import" title="Load the JSON in the box as the pattern">
+            Import pasted
+          </button>
+          <span class="spacer"></span>
+          <button class="btn" id="json-save" hidden>Save edits first</button>
+          <button class="btn" id="json-copy">Copy</button>
+          <button class="btn primary" id="json-dl" hidden>Download .json</button>
+          <button class="btn" id="json-close">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal" id="trace" hidden>
+      <div class="modal-card" role="dialog" aria-labelledby="trace-title">
+        <h3 id="trace-title">Trace panels from image</h3>
+        <div class="trace-wrap"><canvas id="trace-prev" aria-label="Detected panel outlines"></canvas></div>
+        <p class="hint-text" id="trace-info"></p>
+        <div class="trace-opts">
+          <div class="field">
+            <label for="tr-scale">Scale (px per cm)</label
+            ><input class="input" id="tr-scale" type="number" min="0.1" step="0.1" value="3" />
+          </div>
+          <div class="field">
+            <label for="tr-tol">Background tolerance <span id="tr-tol-v"></span></label
+            ><input id="tr-tol" type="range" min="8" max="160" value="40" />
+          </div>
+          <div class="field">
+            <label for="tr-simp">Simplify outline <span id="tr-simp-v"></span></label
+            ><input id="tr-simp" type="range" min="0.5" max="6" step="0.25" value="1.5" />
+          </div>
+        </div>
+        <p class="hint-text">
+          GarmentCode PNG renders use about 3 px per cm. Everything enclosed by an outline counts as one
+          panel, so outline-only drawings work too.
+        </p>
+        <div class="row" style="justify-content: flex-end; flex-wrap: wrap">
+          <button class="btn" id="tr-cancel">Cancel</button>
+          <button class="btn" id="tr-add">Add to pattern</button>
+          <button class="btn primary" id="tr-replace">Replace pattern</button>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="src/main.js"></script>
+  </body>
+</html>
