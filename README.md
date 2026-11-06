@@ -32,3 +32,12 @@ See [CLAUDE.md](CLAUDE.md) for architecture, conventions and how to add features
 4. **Save** (Ctrl+S) writes the current pattern into the specification; **Export JSON** shows,
    copies or downloads the last saved version.
 
+## Example: Split along cut
+
+Draw a line across `right_ftorso` (left), then press *Split along cut*: the panel becomes two pieces
+and the new seam is stitched (right).
+
+<p>
+  <img src="examples/UI_img1.png" width="49%" alt="Drawing a cut line across right_ftorso">
+  <img src="examples/UI_img2.png" width="49%" alt="right_ftorso split into two stitched pieces">
+</p>
