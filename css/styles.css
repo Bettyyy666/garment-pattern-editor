@@ -325,6 +325,10 @@ aside h2 {
   color: var(--fg);
   font-weight: 600;
 }
+.gusset-params .field {
+  flex: 1;
+  min-width: 0;
+}
 .op-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

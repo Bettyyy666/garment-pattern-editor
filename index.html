@@ -218,6 +218,30 @@
             Split along cut
           </button>
           <p class="hint-text" id="split-hint"></p>
+          <button class="btn primary" id="op-gusset" title="Insert gusset (G)">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M12 3l6 9-6 9-6-9z" />
+            </svg>
+            Insert gusset
+          </button>
+          <div class="row gusset-params">
+            <div class="field">
+              <label for="gs-len">Opening length (cm)</label>
+              <input class="input" id="gs-len" type="number" min="1" step="0.5" value="10" />
+            </div>
+            <div class="field">
+              <label for="gs-width">Gusset width (cm)</label>
+              <input class="input" id="gs-width" type="number" min="1" step="0.5" value="7.5" />
+            </div>
+          </div>
+          <p class="hint-text" id="gusset-hint"></p>
           <div class="op-grid">
             <button class="btn" id="op-mirror">Mirror</button>
             <button class="btn" id="op-rotate">Rotate 90°</button>

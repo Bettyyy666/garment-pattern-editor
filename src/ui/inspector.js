@@ -4,6 +4,7 @@ import { area, pathLen, perimeter } from '../geometry.js';
 import { markPts } from '../model/marks.js';
 import { bbox, panelPts, uniqueName } from '../model/panels.js';
 import { edgeIndex } from '../model/stitches.js';
+import { gussetParams, resolveGusset } from '../operations/gusset.js';
 import { resolveCut, splitTargets } from '../operations/split.js';
 import { isDirty } from '../spec.js';
 import { app, getMark, getPanel, pushHistory } from '../state.js';
@@ -48,6 +49,14 @@ export function renderInspector() {
       ? `Splits <b>${T.map((t) => esc(t.p.name)).join(', ')}</b> into ${T.reduce((a, t) => a + t.pieces.length, 0)} pieces along <b>${esc(m.label)}</b>. Stitches on cut edges are split too, and the new seam is stitched.`
       : `<b>${esc(m.label)}</b> doesn't cross a panel edge twice. Extend it past both edges.`;
   }
+  const g = resolveGusset(),
+    gp = gussetParams();
+  $('#op-gusset').disabled = !!g.err;
+  $('#gusset-hint').innerHTML = g.err
+    ? g.err
+    : g.kind === 'diamond'
+      ? `Opens <b>${esc(g.seams[0][0].p.name)}</b>–<b>${esc(g.seams[0][1].p.name)}</b> and <b>${esc(g.seams[1][0].p.name)}</b>–<b>${esc(g.seams[1][1].p.name)}</b> for ${gp.len} cm from the corner, keeps the seam across it, and sews in a ${gp.width} cm wide diamond.`
+      : `Opens <b>${esc(g.seams[0][0].p.name)}</b>–<b>${esc(g.seams[0][1].p.name)}</b> for ${gp.len} cm from the open end and sews in a ${gp.width} cm wide triangle.`;
   const panelSel = app.sel && app.sel.kind === 'panel' ? getPanel(app.sel.id) : null;
   ['op-mirror', 'op-rotate', 'op-dup', 'op-del'].forEach(
     (id) => ($('#' + id).disabled = !(panelSel || (id === 'op-del' && app.sel))),

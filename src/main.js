@@ -66,6 +66,7 @@ $('#plist').addEventListener('click', (e) => {
     render();
   }),
 );
+['gs-len', 'gs-width'].forEach((id) => $('#' + id).addEventListener('input', renderAll));
 $('#save').onclick = saveSpec;
 $('#spec-save').onclick = saveSpec;
 $('#json-save').onclick = saveSpec;
