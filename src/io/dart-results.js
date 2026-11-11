@@ -53,12 +53,16 @@ async function pump() {
 }
 
 // The latest solve of dart d on panel p: { res, current } (res null until one arrives). A missing or out-of-date
-// result is queued, except while something is being dragged.
+// result is queued, except while a panel or point is being dragged (a dragged dart re-solves live).
 export function dartResult(p, d) {
   const key = keyOf(p, d),
     c = cache.get(d.id),
     current = !!c && c.key === key;
-  if (!current && !app.drag && !(queue.has(d.id) && queue.get(d.id).key === key)) {
+  if (
+    !current &&
+    (!app.drag || app.drag.mode === 'dart') &&
+    !(queue.has(d.id) && queue.get(d.id).key === key)
+  ) {
     queue.set(d.id, { pid: p.id, key });
     setTimeout(pump, 0);
   }

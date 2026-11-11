@@ -1,7 +1,8 @@
 // Pointer input on the canvas: select, drag, draw, pan, pinch, wheel zoom.
-import { dist, len, sub } from '../geometry.js';
+import { dist, len, pip, sub } from '../geometry.js';
+import { rayCut } from '../model/intrinsic.js';
 import { addMark, findPanelFor } from '../model/marks.js';
-import { translatePanel } from '../model/panels.js';
+import { panelPts, translatePanel } from '../model/panels.js';
 import { app, getMark, getPanel, pushHistory, snapshot } from '../state.js';
 import { $, svg } from './dom.js';
 import { renderAll, renderInspector } from './inspector.js';
@@ -23,7 +24,7 @@ export function endPointer(e) {
     if (pointers.size < 2) app.drag = null;
     return;
   }
-  if (app.drag && (app.drag.mode === 'panel' || app.drag.mode === 'mark') && app.drag.moved) {
+  if (app.drag && ['panel', 'mark', 'dart'].includes(app.drag.mode) && app.drag.moved) {
     app.undoStack.push(app.drag.snap);
     app.redoStack = [];
     if (app.drag.mode === 'mark') {
@@ -53,11 +54,16 @@ export function initPointer() {
     }
     if (e.button !== 0) return;
     const t = e.target.closest && e.target.closest('[data-pid],[data-mid]');
-    // Clicking a dart apex (any tool but erase) selects that dart for editing.
+    // Pressing a dart apex (any tool but erase) selects that dart for editing; dragging it moves the whole dart
+    // (apex and cut together, the cut angle kept) inside its panel.
     const dt = e.target.closest && e.target.closest('[data-did]');
     if (dt && app.tool !== 'erase' && !(app.draft && app.draft.type === 'dart')) {
+      const p = getPanel(dt.dataset.dpid),
+        d = p && p.darts.find((x) => x.id === dt.dataset.did);
       app.sel = { kind: 'panel', id: dt.dataset.dpid };
       app.dartSel = dt.dataset.did;
+      if (d)
+        app.drag = { mode: 'dart', pid: p.id, did: d.id, grab: sub(w, d.at), snap: snapshot(), moved: false };
       renderAll();
       return;
     }
@@ -169,6 +175,20 @@ export function initPointer() {
         app.drag.last = w;
         app.drag.moved = true;
         render();
+        return;
+      }
+      if (app.drag.mode === 'dart') {
+        const p = getPanel(app.drag.pid),
+          d = p && p.darts.find((x) => x.id === app.drag.did),
+          at = sub(w, app.drag.grab),
+          V = d && panelPts(p);
+        // The apex must stay inside the panel with its cut still reaching the edge; otherwise it stops at the
+        // last valid position.
+        if (d && pip(at, V) && rayCut(V, at, d.cut)) {
+          d.at = at;
+          app.drag.moved = true;
+          render();
+        }
         return;
       }
       if (app.drag.mode === 'mark') {

@@ -99,7 +99,8 @@ All editor geometry is in **centimetres, canvas coordinates (x right, y down)**.
     has no `darts`; the solver outline closes the legs into one mouth segment (`closedEdges`).
   - Insert dart tool (A): click the apex inside a panel, then toward the edge (sets `cut`). The 2D view draws each
     dart's solved opening (develop() outline placed at the apex, turned by the cut angle); `app.dartSel` is the
-    dart edited in the Darts block. The 3D view ignores darts.
+    dart edited in the Darts block; dragging an apex moves the whole dart (cut angle kept, apex kept inside the
+    panel, one undo step) and re-solves live. The 3D view ignores darts.
   - After every load, `analyzeLoaded()` (spec.js) posts each panel to `/api/dart/analyze` (ConeDartModel's
     `original_lengths` / `original_turns`, `ray_cut` per dart). Results live outside `app.state` (so loading is not
     dirty) and `buildSpec()` writes them as `panels[k].intrinsic` while they still match the panel.

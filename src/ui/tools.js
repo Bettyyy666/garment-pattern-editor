@@ -8,7 +8,7 @@ import { render } from './render.js';
 
 export const HINTS = {
   select:
-    'Click a panel to select it, drag to move it on the layout. Click a line to choose it as the cut. Drag empty space to pan.',
+    'Click a panel to select it, drag to move it on the layout. Drag a dart apex to move the dart. Click a line to choose it as the cut. Drag empty space to pan.',
   pan: 'Drag to pan. Scroll or pinch to zoom.',
   point: 'Click to place a point. Points snap to panel vertices and edges.',
   line: 'Click a start point, then an end point. Draw across the panel edges to make a cut. Shift locks to 45°.',

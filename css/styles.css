@@ -850,7 +850,7 @@ svg text {
 .dart-apex {
   fill: var(--danger);
   stroke: var(--paper);
-  cursor: pointer;
+  cursor: move;
 }
 .dart-apex.sel {
   fill: var(--dart-gold);
