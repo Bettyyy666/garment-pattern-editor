@@ -420,6 +420,51 @@ aside h2 {
   letter-spacing: 0.08em;
   color: var(--muted);
 }
+aside section.collapsed {
+  padding-bottom: 12px;
+}
+aside section:has(.sec-toggle) {
+  padding-top: 12px;
+}
+.sec-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.sec-toggle {
+  all: unset;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 4px 0;
+  cursor: pointer;
+}
+.sec-toggle::before {
+  content: '';
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform 0.15s;
+}
+.sec-toggle[aria-expanded='true']::before {
+  transform: rotate(45deg);
+}
+.sec-toggle #stitch-count {
+  margin-left: auto;
+}
+.sec-toggle:hover {
+  color: var(--fg);
+}
+.sec-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
 .hint-text {
   margin: 0;
   font-size: 12.5px;

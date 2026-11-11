@@ -4,6 +4,7 @@ import { OPERATIONS } from './operations/index.js';
 import { initPointer } from './ui/pointer.js';
 import { initKeyboard } from './ui/keyboard.js';
 import { initDartView } from './ui/dart-view.js';
+import { initSections } from './ui/sections.js';
 import { initView3d } from './ui/view3d.js';
 import { loadGarmentCode } from './io/garmentcode.js';
 import { commitTrace, runTrace } from './io/image-trace.js';
@@ -154,6 +155,7 @@ addEventListener(
   true,
 );
 
+initSections();
 initPointer();
 initKeyboard();
 initDartView();

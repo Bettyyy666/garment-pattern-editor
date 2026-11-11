@@ -38,7 +38,8 @@ src/io/              GarmentCode JSON parse/build, PNG tracing, file routing, da
                      per-panel ConeDartModel analysis written to panels[k].intrinsic (intrinsic-analysis.js)
 server/              dart_server.py (static files + solver API), pyproject.toml, intrinsic-dart (git submodule)
 src/spec.js          saved specification: save, dirty state, export dialog, download
-src/ui/              render (SVG), inspector, pointer, keyboard, tools, viewport, snapping, toast, dom,
+src/ui/              render (SVG), inspector, sections (drop-down sidebar sections), pointer, keyboard, tools,
+                     viewport, snapping, toast, dom,
                      dart-view (the three-pane cone-dart dialog), view3d (3D pane right of the 2D canvas: panels placed rigidly
                      by place.t/rot via world3D, stitches as connectors; no simulation)
 examples/            default_specification.json (loaded at startup and by Reset to default),
