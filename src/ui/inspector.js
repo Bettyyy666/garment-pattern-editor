@@ -65,7 +65,7 @@ export function renderInspector() {
   $('#op-dart').disabled = !!dr.err;
   $('#dart-hint').innerHTML = dr.err
     ? esc(dr.err)
-    : `Adds a ${DART_DEFECT_DEG}° dart (cone point) to <b>${esc(dr.p.name)}</b>, cut toward the nearest edge.`;
+    : `Adds a ${DART_DEFECT_DEG}° dart to <b>${esc(dr.p.name)}</b> with its apex at the ${dr.fromLine ? 'line start, cut along the line to the edge' : 'point, cut toward the nearest edge'}.`;
   const panelSel = app.sel && app.sel.kind === 'panel' ? getPanel(app.sel.id) : null;
   ['op-mirror', 'op-rotate', 'op-dup', 'op-del'].forEach(
     (id) => ($('#' + id).disabled = !(panelSel || (id === 'op-del' && app.sel))),

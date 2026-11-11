@@ -99,7 +99,7 @@ export function refreshDartReadout() {
 export function dartsHTML(p) {
   const D = p.darts || [];
   if (!D.length)
-    return `<h3 class="sub">Darts</h3><p class="hint-text">No darts. Choose the <b>Insert dart</b> tool (A), click the apex inside the panel, then click toward the edge where it opens.</p>`;
+    return `<h3 class="sub">Darts</h3><p class="hint-text">No darts. Use the <b>Insert dart</b> tool (A): click the apex, then toward the edge. Or draw a line from the apex to the edge, select it and press <b>Add dart</b> (D).</p>`;
   if (!D.some((d) => d.id === app.dartSel)) app.dartSel = D[0].id;
   const d = D.find((x) => x.id === app.dartSel),
     mode = get(d, 'cutMode'),

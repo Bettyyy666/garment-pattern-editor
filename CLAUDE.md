@@ -97,7 +97,9 @@ All editor geometry is in **centimetres, canvas coordinates (x right, y down)**.
   - A dart with `legs: [eidIn, eidOut]` is a GarmentCode dart: two adjacent edges stitched together, apex at their
     shared vertex, Ω = wedge angle, cut = bisector. On import these are detected from the stitches when the file
     has no `darts`; the solver outline closes the legs into one mouth segment (`closedEdges`).
-  - Insert dart tool (A): click the apex inside a panel, then toward the edge (sets `cut`). The 2D view draws each
+  - Insert dart tool (A): click the apex inside a panel, then toward the edge (sets `cut`). *Add dart* (D) does the
+    same from a selected line (apex = line start, cut toward its end) or point (cut toward the nearest edge). New
+    darts get the demo's default settings; the solver view opens only from its button. The 2D view draws each
     dart's solved opening (develop() outline placed at the apex, turned by the cut angle); `app.dartSel` is the
     dart edited in the Darts block; dragging an apex moves the whole dart (cut angle kept, apex kept inside the
     panel, one undo step) and re-solves live. The 3D view draws a panel with a solved dart as that solve's
