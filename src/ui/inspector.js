@@ -87,11 +87,26 @@ export function renderInspector() {
     });
     rows.sort((a, b) => a.i - b.i);
     box.innerHTML = `<div class="field"><label for="pname">Name</label><input class="input" id="pname" value="${esc(panelSel.name)}"></div>
-    <dl class="kv" style="margin:10px 0 0"><dt>Area</dt><dd>${Math.abs(area(P)).toFixed(1)} cm²</dd><dt>Perimeter</dt><dd>${perimeter(P).toFixed(1)} cm</dd>
+    ${fold(
+      'panel',
+      'Panel',
+      `${Math.abs(area(P)).toFixed(0)} cm² · ${panelSel.edges.length} edges`,
+      `<dl class="kv" style="margin:0"><dt>Area</dt><dd>${Math.abs(area(P)).toFixed(1)} cm²</dd><dt>Perimeter</dt><dd>${perimeter(P).toFixed(1)} cm</dd>
     <dt>Width × height</dt><dd>${(b.x1 - b.x0).toFixed(1)} × ${(b.y1 - b.y0).toFixed(1)}</dd><dt>Edges</dt><dd>${panelSel.edges.length}</dd>
-    ${panelSel.label ? `<dt>Label</dt><dd>${esc(panelSel.label)}</dd>` : ''}<dt>Stitched edges</dt><dd>${rows.length}</dd></dl>
-    ${rows.length ? `<ul class="slist">${rows.map((r) => `<li><span class="sdot" style="background:${STITCH_COLORS[r.si % STITCH_COLORS.length]}">${r.si + 1}</span>${r.txt}${r.cut ? ' <em>new seam</em>' : ''}</li>`).join('')}</ul>` : ''}`;
+    ${panelSel.label ? `<dt>Label</dt><dd>${esc(panelSel.label)}</dd>` : ''}</dl>`,
+    )}
+    ${fold(
+      'stitched',
+      'Stitched edges',
+      rows.length,
+      rows.length
+        ? `<ul class="slist">${rows.map((r) => `<li><span class="sdot" style="background:${STITCH_COLORS[r.si % STITCH_COLORS.length]}">${r.si + 1}</span>${r.txt}${r.cut ? ' <em>new seam</em>' : ''}</li>`).join('')}</ul>`
+        : '<p class="hint-text">No stitches on this panel.</p>',
+    )}`;
     box.insertAdjacentHTML('beforeend', shapeHTML(panelSel));
+    box
+      .querySelectorAll('details[data-fold]')
+      .forEach((d) => d.addEventListener('toggle', () => (app.folds[d.dataset.fold] = d.open)));
     wireShape(box, panelSel);
     $('#pname').addEventListener('change', (e) => {
       const v = slug(e.target.value);
@@ -124,29 +139,38 @@ export function renderInspector() {
   $('#stitch-count').textContent = app.state.stitches.length ? `${app.state.stitches.length} stitches` : '';
 }
 const DEG = 180 / Math.PI;
+// A collapsible inspector section; its open state is kept in app.folds so re-rendering does not reset it.
+const fold = (key, title, meta, body) =>
+  `<details class="fold" data-fold="${key}"${app.folds[key] ? ' open' : ''}><summary>${title} <span>${meta}</span></summary><div class="fold-body">${body}</div></details>`;
 // Intrinsic shape table (edge length + turning angle) and the panel's darts.
 function shapeHTML(p) {
   const S = p.shape,
     D = p.darts || [],
     num = (attr, v, step, extra = '') =>
       `<input class="input num" ${attr} type="number" step="${step}" value="${v}" ${extra}>`;
-  return `<h3 class="sub">Shape <span>edge length · turning angle</span></h3>
-    <div class="itab-wrap"><table class="itab"><thead><tr><th>Edge</th><th>Length (cm)</th><th>Turn (°)</th></tr></thead><tbody>
+  return `${fold(
+    'shape',
+    'Shape',
+    `${S.len.length} edges`,
+    `<div class="itab-wrap"><table class="itab"><thead><tr><th>Edge</th><th>Length (cm)</th><th>Turn (°)</th></tr></thead><tbody>
     ${S.len
       .map(
         (l, i) =>
           `<tr><td>${i}${S.curve[i] ? ` <em>${S.curve[i].k}</em>` : ''}</td><td>${num(`data-shape="len" data-i="${i}"`, l.toFixed(2), 0.1, 'min="0.01"')}</td><td>${num(`data-shape="turn" data-i="${i}"`, (S.turn[i] * DEG).toFixed(1), 0.5, i ? '' : 'disabled title="Vertex 0 is set by closure"')}</td></tr>`,
       )
-      .join('')}</tbody></table></div>
-    <h3 class="sub">Darts <span>cone point · angle · cut</span></h3>
-    ${
+      .join('')}</tbody></table></div>`,
+  )}
+    ${fold(
+      'darts',
+      'Darts',
+      D.length || 'none',
       D.length
         ? `<table class="itab"><thead><tr><th>At</th><th>Defect (°)</th><th>Cut (°)</th><th style="width:64px"></th></tr></thead><tbody>${D.map(
             (d, j) =>
               `<tr><td>${d.at[0].toFixed(1)}, ${d.at[1].toFixed(1)}</td><td>${num(`data-dart="defect" data-j="${j}"`, (d.defect * DEG).toFixed(1), 1, 'min="0" max="90"')}</td><td>${num(`data-dart="cut" data-j="${j}"`, (d.cut * DEG).toFixed(1), 5)}</td><td><button class="linkbtn" data-dart-open="${j}" title="Open the cone-dart solver">Open</button> <button class="linkbtn" data-dart-del="${j}" title="Remove dart">×</button></td></tr>`,
           ).join('')}</tbody></table>`
-        : '<p class="hint-text">No darts. Place a point inside the panel and press <b>Add dart</b>.</p>'
-    }`;
+        : '<p class="hint-text">No darts. Place a point inside the panel and press <b>Add dart</b>.</p>',
+    )}`;
 }
 function wireShape(box, p) {
   box.querySelectorAll('[data-shape]').forEach((inp) =>

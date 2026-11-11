@@ -15,6 +15,7 @@ export const app = {
   spaceDown: false,
   view: { s: 12, ox: 0, oy: 0 },
   view3d: { on: true, yaw: 0.55, el: 0.3, c: [0, 0], half: 100, fitted: false }, // 3D placement view camera
+  folds: { panel: false, stitched: false, shape: false, darts: false }, // open inspector sections (Selection)
   opts: { grid: true, sa: false, measure: true, verts: false, stitch: true, under: true },
   undoStack: [],
   redoStack: [],
