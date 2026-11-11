@@ -11,7 +11,7 @@ export function toWorld(e) {
   return [(e.clientX - r.left - app.view.ox) / app.view.s, (e.clientY - r.top - app.view.oy) / app.view.s];
 }
 export function fit() {
-  if (app.view3d.on) return fit3d();
+  if (app.view3d.on) fit3d();
   const r = rect();
   if (!r.width || !app.state.panels.length) return;
   const b = allBox();

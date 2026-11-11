@@ -1,5 +1,6 @@
 // 3D view: every panel placed rigidly by its GarmentCode frame (translation + rotation), no simulation.
 // Stitched edges are coloured and joined by dashed connector lines. Turntable orbit around the vertical (y) axis.
+// Shown in its own pane beside the 2D canvas. Moving panels in 2D only changes place.ox/oy, which world3D() ignores.
 import { STITCH_COLORS, TINTS } from '../config.js';
 import { pointAtFrac } from '../geometry.js';
 import { edgeSample } from '../model/edges.js';
@@ -8,11 +9,11 @@ import { panelPts } from '../model/panels.js';
 import { edgeIndex } from '../model/stitches.js';
 import { app } from '../state.js';
 import { $ } from './dom.js';
+import { fit } from './viewport.js';
 import { renderAll } from './inspector.js';
-import { setTool } from './tools.js';
 import { esc, f3 } from '../util.js';
 
-const HINT3D = 'Drag to orbit · Shift-drag to pan · wheel to zoom · click a panel to select it · F to fit';
+const HINT3D = 'Drag to orbit · Shift-drag to pan · wheel to zoom · click a panel to select it';
 
 // World (cm, y up, z toward the front) -> [screen x, screen y (down), depth toward the camera].
 function project(q, v) {
@@ -57,15 +58,14 @@ export function render3d() {
     hv = v.half * Math.max(1, 1 / asp),
     u = (2 * hw) / (r.width || 1); // world units per screen pixel
   svg.setAttribute('viewBox', `${f3(v.c[0] - hw)} ${f3(v.c[1] - hv)} ${f3(2 * hw)} ${f3(2 * hv)}`);
-  $('#zoom').textContent = '3D';
   const L = lifted();
   if (!L.length) {
     svg.innerHTML = '';
-    $('#hint').textContent = 'No panels. Open a GarmentCode specification to see its 3D placement.';
+    $('#hint3d').textContent = 'No panels. Open a GarmentCode specification to see its 3D placement.';
     return;
   }
   const flat = app.state.panels.every((p) => !p.place.t[2] && !p.place.rot.some(Boolean));
-  $('#hint').textContent = flat
+  $('#hint3d').textContent = flat
     ? 'This pattern has no 3D placement (every panel lies in z = 0). ' + HINT3D
     : HINT3D;
   let h = '';
@@ -145,26 +145,20 @@ export function render3d() {
   svg.innerHTML = h;
 }
 
+// Show or hide the 3D pane. Both panes change size, so both are refitted.
 export function setView3d(on) {
-  const v = app.view3d;
-  v.on = on;
-  document.querySelector('main').classList.toggle('is3d', on);
-  $('#view-2d').setAttribute('aria-pressed', !on);
+  app.view3d.on = on;
+  document.querySelector('main').classList.toggle('show3d', on);
   $('#view-3d').setAttribute('aria-pressed', on);
-  if (on && !v.fitted) fit3d();
-  if (!on) setTool(app.tool); // restores the 2D hint and cursor
+  fit();
   renderAll();
 }
 
 export function initView3d() {
   const svg = $('#view3d'),
     v = app.view3d;
-  $('#view-2d').onclick = () => setView3d(false);
-  $('#view-3d').onclick = () => setView3d(true);
-  // Drawing tools work on the 2D canvas: choosing one switches back to 2D.
-  document
-    .querySelectorAll('.tool')
-    .forEach((b) => b.addEventListener('click', () => v.on && setView3d(false)));
+  $('#view-3d').onclick = () => setView3d(!v.on);
+  $('#fit3d').onclick = () => fit3d();
   let drag = null;
   svg.addEventListener('pointerdown', (e) => {
     drag = { x: e.clientX, y: e.clientY, moved: false, pan: e.shiftKey || e.button === 1, target: e.target };

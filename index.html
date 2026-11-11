@@ -58,17 +58,14 @@
             </svg>
           </button>
         </div>
-        <div class="seg" role="group" aria-label="View">
-          <button class="btn" id="view-2d" aria-pressed="true" title="2D pattern view">2D</button>
-          <button
-            class="btn"
-            id="view-3d"
-            aria-pressed="false"
-            title="3D view: panels placed as in the specification"
-          >
-            3D
-          </button>
-        </div>
+        <button
+          class="btn"
+          id="view-3d"
+          aria-pressed="true"
+          title="Show the 3D view beside the pattern: panels placed as in the specification"
+        >
+          3D view
+        </button>
         <button class="btn" id="fit" title="Fit all panels (F)">Fit</button>
         <label class="btn" for="file" title="Open a PNG pattern image or a GarmentCode specification JSON"
           >Open file</label
@@ -171,14 +168,24 @@
         </button>
       </nav>
 
-      <main>
-        <svg id="canvas" aria-label="Pattern canvas"><g id="world"></g></svg>
-        <svg id="view3d" aria-label="3D view of panel placement"></svg>
-        <div class="status">
-          <span class="chip" id="hint"></span>
-          <span class="chip mono" id="pos">x — y —</span>
-          <span class="chip mono" id="zoom">100%</span>
-        </div>
+      <main class="show3d">
+        <section class="pane pane2d" aria-label="2D pattern">
+          <svg id="canvas" aria-label="Pattern canvas"><g id="world"></g></svg>
+          <span class="chip pane-tag">2D pattern</span>
+          <div class="status">
+            <span class="chip" id="hint"></span>
+            <span class="chip mono" id="pos">x — y —</span>
+            <span class="chip mono" id="zoom">100%</span>
+          </div>
+        </section>
+        <section class="pane pane3d" aria-label="3D placement">
+          <svg id="view3d" aria-label="3D view of panel placement"></svg>
+          <span class="chip pane-tag">3D placement</span>
+          <div class="status">
+            <span class="chip" id="hint3d"></span>
+            <button class="btn" id="fit3d" title="Fit the 3D view">Fit 3D</button>
+          </div>
+        </section>
         <div class="toast" id="toast" hidden></div>
       </main>
 

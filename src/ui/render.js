@@ -40,7 +40,7 @@ export function renderStitches(px, EI) {
   return h;
 }
 export function render() {
-  if (app.view3d.on) return render3d();
+  if (app.view3d.on) render3d();
   const s = app.view.s,
     px = (v) => v / s;
   world.setAttribute('transform', `translate(${f3(app.view.ox)} ${f3(app.view.oy)}) scale(${f3(s)})`);

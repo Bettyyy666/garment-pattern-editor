@@ -39,7 +39,7 @@ src/io/              GarmentCode JSON parse/build, PNG tracing, file routing, da
 server/              dart_server.py (static files + solver API), pyproject.toml, intrinsic-dart (git submodule)
 src/spec.js          saved specification: save, dirty state, export dialog, download
 src/ui/              render (SVG), inspector, pointer, keyboard, tools, viewport, snapping, toast, dom,
-                     dart-view (the three-pane cone-dart dialog), view3d (2D/3D toggle: panels placed rigidly
+                     dart-view (the three-pane cone-dart dialog), view3d (3D pane right of the 2D canvas: panels placed rigidly
                      by place.t/rot via world3D, stitches as connectors; no simulation)
 examples/            default_specification.json (loaded at startup and by Reset to default),
                      skirt_specification.json + skirt_pattern.png for manual testing
@@ -56,8 +56,9 @@ so never add a module-level `let` that other modules need to write. Add a field 
   - `isDirty()` compares `spec.snap` with `snapshot()`.
   - `extra` keeps the source file's `parameters` and `properties` so they are written back on save.
 - UI state lives in `app.sel`, `app.tool`, `app.draft`, `app.drag`, `app.view` (pan/zoom), `app.opts` (view toggles) and similar fields.
-- `app.view3d` (`on`, camera `yaw/el/c/half`) is the 3D view. While it is on, `render()` and `fit()` delegate to
-  `ui/view3d.js`, so the usual mutation pattern updates the 3D view too.
+- `app.view3d` (`on`, camera `yaw/el/c/half`) is the 3D pane beside the 2D canvas (`on` = shown, the *3D view*
+  button toggles it). While it is shown, `render()` and `fit()` also update `ui/view3d.js`, so the usual mutation
+  pattern updates both panes. 2D moves only change `place.ox/oy`, which `world3D()` ignores.
 
 ### Mutation pattern (always follow it)
 
