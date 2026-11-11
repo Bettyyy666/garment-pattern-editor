@@ -3,8 +3,10 @@
 // Shown in its own pane beside the 2D canvas. Moving panels in 2D only changes place.ox/oy, which world3D() ignores.
 import { STITCH_COLORS, TINTS } from '../config.js';
 import { pointAtFrac } from '../geometry.js';
+import { dartResult } from '../io/dart-results.js';
+import { coneWorld } from '../model/cone3d.js';
 import { edgeSample } from '../model/edges.js';
-import { eulerToMat, world3D } from '../model/frame3d.js';
+import { cross3, dot3, eulerToMat, sub3, world3D } from '../model/frame3d.js';
 import { panelPts } from '../model/panels.js';
 import { edgeIndex } from '../model/stitches.js';
 import { app } from '../state.js';
@@ -32,6 +34,12 @@ const camDir = (v) => {
   return [-Math.sin(v.yaw) * ce, se, Math.cos(v.yaw) * ce];
 };
 const pt = (q) => `${f3(q[0])} ${f3(q[1])}`;
+const LIGHT = [0.3, 0.6, 0.74]; // world light direction for cone facet shading
+const hexRgb = (hex) => {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
+  const n = m ? parseInt(m[1], 16) : 0xcccccc;
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+};
 
 // 3D outline of every panel (sampled edges, canvas -> panel local -> world).
 const lifted = () => app.state.panels.map((p) => ({ p, W: panelPts(p).map((q) => world3D(p, q)) }));
@@ -65,9 +73,8 @@ export function render3d() {
     return;
   }
   const flat = app.state.panels.every((p) => !p.place.t[2] && !p.place.rot.some(Boolean));
-  $('#hint3d').textContent = flat
-    ? 'This pattern has no 3D placement (every panel lies in z = 0). ' + HINT3D
-    : HINT3D;
+  const hint = flat ? 'This pattern has no 3D placement (every panel lies in z = 0). ' + HINT3D : HINT3D;
+  $('#hint3d').textContent = hint;
   let h = '';
   // Floor grid under the panels, 10 cm spacing, and the vertical axis through the origin.
   const all = L.flatMap((l) => l.W),
@@ -87,7 +94,7 @@ export function render3d() {
   const fr = project([0, y0, g1(zb)], v);
   h += `<text class="g3-text" x="${f3(fr[0])}" y="${f3(fr[1] + 14 * u)}" font-size="${f3(11 * u)}" text-anchor="middle">front (+z)</text>`;
 
-  // Panels, far to near. Each panel is planar, so one depth per panel is enough for these layouts.
+  // Painter order: one depth per flat panel (planar), one per cone triangle.
   const cd = camDir(v),
     EI = app.opts.stitch ? edgeIndex() : null,
     stitchOf = new Map();
@@ -98,23 +105,59 @@ export function render3d() {
   const order = L.map((l) => ({ ...l, d: l.W.reduce((s, q) => s + project(q, v)[2], 0) / l.W.length })).sort(
     (a, b) => a.d - b.d,
   );
-  for (const { p, W } of order) {
-    const R = eulerToMat(p.place.rot),
+  // A panel with a solved dart is drawn as intrinsic-dart's cone surface (the selected dart if it is on that panel,
+  // else its first dart): its triangles join the depth sort, the flat outline stays as a dashed reference.
+  const items = [];
+  let cones = 0;
+  for (const o of order) {
+    const { p, W } = o,
+      R = eulerToMat(p.place.rot),
       n = [R[0][2], R[1][2], R[2][2]],
       back = n[0] * cd[0] + n[1] * cd[1] + n[2] * cd[2] < 0,
-      sel = app.sel && app.sel.kind === 'panel' && app.sel.id === p.id;
-    h += `<path class="p3${back ? ' back' : ''}${sel ? ' sel' : ''}" data-pid="${p.id}" d="M${W.map((q) => pt(project(q, v))).join('L')}Z" style="fill:${TINTS[p.tint % TINTS.length]}" fill-opacity="0.92" stroke-width="${f3((sel ? 2.6 : 1.3) * u)}"/>`;
+      sel = app.sel && app.sel.kind === 'panel' && app.sel.id === p.id,
+      D = p.darts || [],
+      d = D.find((x) => x.id === app.dartSel) || D[0],
+      res = d && dartResult(p, d).res;
+    o.cone = !!(res && res.surf);
+    if (o.cone) {
+      cones++;
+      const Q = coneWorld(p, d, res.surf),
+        P = Q.map((q) => project(q, v)),
+        tint = hexRgb(TINTS[p.tint % TINTS.length]),
+        pocket = hexRgb(getComputedStyle(document.documentElement).getPropertyValue('--pocket-face').trim());
+      res.surf.faces.forEach((f, i) => {
+        const [a, b, c] = f.map((k) => Q[k]),
+          nn = cross3(sub3(b, a), sub3(c, a)),
+          ln = Math.hypot(...nn) || 1,
+          facing = (nn[0] * cd[0] + nn[1] * cd[1] + nn[2] * cd[2]) / ln,
+          k = (0.62 + 0.38 * Math.abs(dot3(nn, LIGHT) / ln)) * (facing < 0 ? 0.8 : 1),
+          col = (res.surf.pocket[i] ? pocket : tint).map((x) => Math.round(Math.min(255, x * k)));
+        items.push({
+          d: (P[f[0]][2] + P[f[1]][2] + P[f[2]][2]) / 3,
+          h: `<path class="p3f" data-pid="${p.id}" d="M${pt(P[f[0]])}L${pt(P[f[1]])}L${pt(P[f[2]])}Z" fill="rgb(${col})" stroke="rgb(${col})" stroke-width="${f3(0.5 * u)}"/>`,
+        });
+      });
+      items.push({
+        d: Infinity,
+        h: `<path class="p3 ghost${sel ? ' sel' : ''}" d="M${W.map((q) => pt(project(q, v))).join('L')}Z" fill="none" stroke-width="${f3((sel ? 2 : 1) * u)}" stroke-dasharray="${f3(4 * u)} ${f3(3 * u)}" style="pointer-events:none"/>`,
+      });
+      continue;
+    }
+    let h1 = `<path class="p3${back ? ' back' : ''}${sel ? ' sel' : ''}" data-pid="${p.id}" d="M${W.map((q) => pt(project(q, v))).join('L')}Z" style="fill:${TINTS[p.tint % TINTS.length]}" fill-opacity="0.92" stroke-width="${f3((sel ? 2.6 : 1.3) * u)}"/>`;
     if (EI)
       for (const e of p.edges)
         if (stitchOf.has(e.eid)) {
           const col = STITCH_COLORS[stitchOf.get(e.eid) % STITCH_COLORS.length];
-          h += `<path d="M${edgeSample(e)
+          h1 += `<path d="M${edgeSample(e)
             .map((q) => pt(project(world3D(p, q), v)))
             .join(
               'L',
             )}" fill="none" stroke="${col}" stroke-width="${f3(3.2 * u)}" stroke-linecap="round" style="pointer-events:none"/>`;
         }
+    items.push({ d: o.d, h: h1 });
   }
+  items.sort((a, b) => a.d - b.d);
+  for (const it of items) h += it.h;
   // Stitch connectors: stitched edges run in opposite directions, so fraction f on A meets 1 - f on B.
   if (EI)
     app.state.stitches.forEach((st, si) => {
@@ -143,6 +186,10 @@ export function render3d() {
     h += `<text class="panel-label" x="${f3(c[0])}" y="${f3(c[1])}" font-size="${f3(11 * u)}" stroke-width="${f3(3 * u)}" text-anchor="middle">${esc(p.name)}</text>`;
   }
   svg.innerHTML = h;
+  if (cones)
+    $('#hint3d').textContent =
+      `${cones} panel${cones > 1 ? 's' : ''} shown as intrinsic-dart cone surfaces (dashed: flat panel). ` +
+      hint;
 }
 
 // Show or hide the 3D pane. Both panes change size, so both are refitted.

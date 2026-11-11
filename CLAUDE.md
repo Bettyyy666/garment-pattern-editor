@@ -42,7 +42,7 @@ src/spec.js          saved specification: save, dirty state, export dialog, down
 src/ui/              render (SVG), inspector, sections (drop-down sidebar sections), pointer, keyboard, tools,
                      viewport, snapping, toast, dom,
                      dart-view (the three-pane cone-dart dialog), dart-editor (Darts block of Selection: every
-                     optimize()/develop() parameter of the selected dart), view3d (3D pane right of the 2D canvas: panels placed rigidly
+                     optimize()/develop() parameter of the selected dart), view3d (3D pane right of the 2D canvas: panels placed rigidly, darted panels as cone surfaces,
                      by place.t/rot via world3D, stitches as connectors; no simulation)
 examples/            default_specification.json (loaded at startup and by Reset to default),
                      skirt_specification.json + skirt_pattern.png for manual testing
@@ -100,7 +100,9 @@ All editor geometry is in **centimetres, canvas coordinates (x right, y down)**.
   - Insert dart tool (A): click the apex inside a panel, then toward the edge (sets `cut`). The 2D view draws each
     dart's solved opening (develop() outline placed at the apex, turned by the cut angle); `app.dartSel` is the
     dart edited in the Darts block; dragging an apex moves the whole dart (cut angle kept, apex kept inside the
-    panel, one undo step) and re-solves live. The 3D view ignores darts.
+    panel, one undo step) and re-solves live. The 3D view draws a panel with a solved dart as that solve's
+    `cone_surface()` (selected dart, else the panel's first), placed by `model/cone3d.js`: x/y as the 2D outline,
+    z along the panel normal, shifted so the boundary sits on the panel plane on average.
   - After every load, `analyzeLoaded()` (spec.js) posts each panel to `/api/dart/analyze` (ConeDartModel's
     `original_lengths` / `original_turns`, `ray_cut` per dart). Results live outside `app.state` (so loading is not
     dirty) and `buildSpec()` writes them as `panels[k].intrinsic` while they still match the panel.

@@ -345,6 +345,13 @@ main.show3d .pane3d {
   stroke-linejoin: round;
   cursor: pointer;
 }
+.p3f {
+  cursor: pointer;
+  stroke-linejoin: round;
+}
+.p3.ghost {
+  stroke-opacity: 0.55;
+}
 .p3.back {
   filter: brightness(0.8);
 }
