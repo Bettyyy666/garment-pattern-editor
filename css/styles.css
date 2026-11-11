@@ -850,6 +850,27 @@ svg text {
 .dart-apex {
   fill: var(--danger);
   stroke: var(--paper);
+  cursor: pointer;
+}
+.dart-apex.sel {
+  fill: var(--dart-gold);
+}
+.dart-open {
+  fill: none;
+  stroke: var(--dart-gold);
+  stroke-dasharray: 6 3;
+}
+.dart-open.sel {
+  stroke-dasharray: none;
+}
+.dart-wedge {
+  fill: color-mix(in srgb, var(--danger) 22%, transparent);
+  stroke: var(--danger);
+  stroke-linejoin: round;
+}
+.dart-open.stale,
+.dart-wedge.stale {
+  opacity: 0.4;
 }
 .dart-tag {
   fill: var(--danger);
@@ -865,6 +886,80 @@ h3.sub {
 h3.sub span {
   font-weight: 400;
   color: var(--muted);
+}
+.dart-list {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.dart-pick {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: none;
+  color: var(--fg);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+  text-align: left;
+}
+.dart-pick span {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.dart-pick:hover {
+  background: var(--surface-2);
+}
+.dart-pick[aria-current='true'] {
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+.dart-form {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 6px 8px;
+  align-items: center;
+  font-size: 12.5px;
+  margin-bottom: 8px;
+}
+.dart-form label {
+  color: var(--muted);
+}
+.dart-form .input {
+  width: 100%;
+  min-width: 0;
+}
+.dp-range {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 64px;
+  gap: 6px;
+  align-items: center;
+}
+.dp-range input[type='range'] {
+  width: 100%;
+  min-width: 0;
+  accent-color: var(--accent);
+}
+.dart-kv {
+  margin: 6px 0 8px;
+}
+.dart-kv.stale {
+  opacity: 0.5;
+}
+.muted {
+  color: var(--muted);
+}
+.row-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 .itab-wrap {
   max-height: 220px;

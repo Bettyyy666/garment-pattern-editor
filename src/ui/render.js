@@ -2,6 +2,8 @@
 import { STITCH_COLORS, TINTS } from '../config.js';
 import { add, centroid, crSample, mul, norm, pathLen, pointAtFrac, sub } from '../geometry.js';
 import { edgeSample } from '../model/edges.js';
+import { dartResult } from '../io/dart-results.js';
+import { toCanvas } from '../model/dart-solve.js';
 import { rayCut } from '../model/intrinsic.js';
 import { markPts } from '../model/marks.js';
 import { dPanel, panelPts } from '../model/panels.js';
@@ -38,6 +40,46 @@ export function renderStitches(px, EI) {
     });
   });
   return h;
+}
+// One dart: the solved opening (intrinsic-dart develop(): developed outline apex -> c+ ... c- -> apex, placed at
+// the apex and turned by the cut angle), its two legs, and the apex. Before a solve arrives, the reference cut.
+const ptxt = (q) => `${f3(q[0])} ${f3(q[1])}`;
+function renderDart(p, d, px) {
+  const a = d.at,
+    sel = app.dartSel === d.id,
+    { res, current } = dartResult(p, d);
+  let h = '';
+  if (res && res.dev) {
+    const t = -d.cut,
+      c = Math.cos(t),
+      s = Math.sin(t),
+      P = res.dev.boundary.map(([x, y]) => add(a, toCanvas([x * c - y * s, x * s + y * c]))),
+      cls = `dart-open${sel ? ' sel' : ''}${current ? '' : ' stale'}`;
+    h += `<path class="${cls}" d="M${ptxt(a)}L${P.map(ptxt).join('L')}Z" stroke-width="${sel ? 2 : 1.3}" vector-effect="non-scaling-stroke" style="pointer-events:none"/>`;
+    h += `<path class="dart-wedge${current ? '' : ' stale'}" d="M${ptxt(P[0])}L${ptxt(a)}L${ptxt(P[P.length - 1])}Z" stroke-width="1.6" vector-effect="non-scaling-stroke" style="pointer-events:none"/>`;
+  } else {
+    const r = rayCut(panelPts(p), a, d.cut);
+    if (r)
+      h += `<path class="dart-cut" d="M${ptxt(a)}L${ptxt(r.point)}" stroke-width="1.6" vector-effect="non-scaling-stroke" style="pointer-events:none"/>`;
+  }
+  const err = res && (res.error || res.offline) && current;
+  h += `<circle class="dart-apex${sel ? ' sel' : ''}" data-did="${d.id}" data-dpid="${p.id}" cx="${f3(a[0])}" cy="${f3(a[1])}" r="${px(sel ? 5.5 : 4)}" stroke-width="${px(1.2)}"><title>Dart ${((d.defect * 180) / Math.PI).toFixed(1)}° · click to edit</title></circle>`;
+  h += `<text class="dart-tag" x="${f3(a[0] + px(7))}" y="${f3(a[1] - px(7))}" font-size="${px(10)}" stroke-width="${px(3)}">${((d.defect * 180) / Math.PI).toFixed(0)}°${err ? ' !' : ''}</text>`;
+  return h;
+}
+// Dart tool preview: the apex, then the cut from the apex toward the pointer, ending on the boundary.
+function renderDartDraft(px) {
+  const p = app.state.panels.find((x) => x.id === app.draft.pid),
+    a = app.draft.pts[0];
+  let h = '';
+  if (p && app.hover) {
+    const r = rayCut(panelPts(p), a, Math.atan2(app.hover[1] - a[1], app.hover[0] - a[0]));
+    if (r)
+      h += `<path class="dart-cut" d="M${ptxt(a)}L${ptxt(r.point)}" stroke-width="2" vector-effect="non-scaling-stroke"/><circle class="dart-apex" cx="${f3(r.point[0])}" cy="${f3(r.point[1])}" r="${px(3)}"/>`;
+  }
+  return (
+    h + `<circle class="dart-apex" cx="${f3(a[0])}" cy="${f3(a[1])}" r="${px(5)}" stroke-width="${px(1.2)}"/>`
+  );
 }
 export function render() {
   if (app.view3d.on) render3d();
@@ -81,14 +123,8 @@ export function render() {
     const c = centroid(panelPts(p));
     h += `<text class="panel-label" x="${f3(c[0])}" y="${f3(c[1])}" font-size="${px(11)}" stroke-width="${px(3)}" text-anchor="middle">${esc(p.name)}</text>`;
   }
-  for (const p of app.state.panels)
-    for (const d of p.darts || []) {
-      const a = d.at,
-        c = rayCut(panelPts(p), a, d.cut);
-      if (c)
-        h += `<path class="dart-cut" d="M${f3(a[0])} ${f3(a[1])}L${f3(c.point[0])} ${f3(c.point[1])}" stroke-width="1.6" vector-effect="non-scaling-stroke" style="pointer-events:none"/>`;
-      h += `<circle class="dart-apex" cx="${f3(a[0])}" cy="${f3(a[1])}" r="${px(4)}" stroke-width="${px(1.2)}" style="pointer-events:none"/><text class="dart-tag" x="${f3(a[0] + px(7))}" y="${f3(a[1] - px(7))}" font-size="${px(10)}" stroke-width="${px(3)}">${((d.defect * 180) / Math.PI).toFixed(0)}°</text>`;
-    }
+  for (const p of app.state.panels) for (const d of p.darts || []) h += renderDart(p, d, px);
+  if (app.draft && app.draft.type === 'dart') h += renderDartDraft(px);
   for (const m of app.state.marks) {
     const isSel = app.sel && app.sel.kind === 'mark' && app.sel.id === m.id;
     if (m.type === 'point') {
@@ -106,7 +142,7 @@ export function render() {
       }
     }
   }
-  if (app.draft) {
+  if (app.draft && app.draft.type !== 'dart') {
     const pts = app.draft.pts.slice();
     if (app.hover) pts.push(hoverPt());
     const P = app.draft.type === 'curve' ? crSample(pts, 12) : pts;

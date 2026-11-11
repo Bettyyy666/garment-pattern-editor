@@ -35,12 +35,14 @@ src/model/           document model: edges, panels, stitches, marks, templates; 
                      stitches and closed into the reference outline (dart-detect.js)
 src/operations/      design operations + registry (operations/index.js)
 src/io/              GarmentCode JSON parse/build, PNG tracing, file routing, dart solver client (dart-server.js),
-                     per-panel ConeDartModel analysis written to panels[k].intrinsic (intrinsic-analysis.js)
+                     per-panel ConeDartModel analysis written to panels[k].intrinsic (intrinsic-analysis.js),
+                     cached per-dart solves for the 2D dart openings (dart-results.js)
 server/              dart_server.py (static files + solver API), pyproject.toml, intrinsic-dart (git submodule)
 src/spec.js          saved specification: save, dirty state, export dialog, download
 src/ui/              render (SVG), inspector, sections (drop-down sidebar sections), pointer, keyboard, tools,
                      viewport, snapping, toast, dom,
-                     dart-view (the three-pane cone-dart dialog), view3d (3D pane right of the 2D canvas: panels placed rigidly
+                     dart-view (the three-pane cone-dart dialog), dart-editor (Darts block of Selection: every
+                     optimize()/develop() parameter of the selected dart), view3d (3D pane right of the 2D canvas: panels placed rigidly
                      by place.t/rot via world3D, stitches as connectors; no simulation)
 examples/            default_specification.json (loaded at startup and by Reset to default),
                      skirt_specification.json + skirt_pattern.png for manual testing
@@ -95,6 +97,9 @@ All editor geometry is in **centimetres, canvas coordinates (x right, y down)**.
   - A dart with `legs: [eidIn, eidOut]` is a GarmentCode dart: two adjacent edges stitched together, apex at their
     shared vertex, Ω = wedge angle, cut = bisector. On import these are detected from the stitches when the file
     has no `darts`; the solver outline closes the legs into one mouth segment (`closedEdges`).
+  - Insert dart tool (A): click the apex inside a panel, then toward the edge (sets `cut`). The 2D view draws each
+    dart's solved opening (develop() outline placed at the apex, turned by the cut angle); `app.dartSel` is the
+    dart edited in the Darts block. The 3D view ignores darts.
   - After every load, `analyzeLoaded()` (spec.js) posts each panel to `/api/dart/analyze` (ConeDartModel's
     `original_lengths` / `original_turns`, `ray_cut` per dart). Results live outside `app.state` (so loading is not
     dirty) and `buildSpec()` writes them as `panels[k].intrinsic` while they still match the panel.
@@ -149,7 +154,7 @@ All editor geometry is in **centimetres, canvas coordinates (x right, y down)**.
 3. Add a button to the *Design operations* section in `index.html` (`<button class="btn" id="op-<name>">`).
 4. Register it in `src/operations/index.js`: `{ id, button: '#op-<name>', key: '<optional key>', run }`.
    `main.js` wires the click and `ui/keyboard.js` wires the shortcut automatically. Check that the key
-   is not already used by tools (v h p l c e), `f` (fit) or another operation.
+   is not already used by tools (v h p l c e a), `f` (fit) or another operation.
 5. If the button should be disabled when it does not apply, add that check in `renderInspector()`
    (see how `op-split` and `op-mirror` are enabled).
 

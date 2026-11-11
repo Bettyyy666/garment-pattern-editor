@@ -1,6 +1,7 @@
 // Drop-down sidebar sections: each section's heading becomes a button that shows or hides the rest of it.
 // Open/closed state is a per-viewer convenience kept in localStorage.
 const KEY = 'gpe.sections';
+const openers = new Map(); // section name -> open()
 const CLOSED_BY_DEFAULT = ['Design operations', 'Selection', 'Panels', 'View'];
 
 function load() {
@@ -43,6 +44,7 @@ export function initSections() {
       body.hidden = !open;
     };
     set(name in saved ? saved[name] : !CLOSED_BY_DEFAULT.includes(name));
+    openers.set(name, () => set(true));
     btn.addEventListener('click', () => {
       const open = sec.classList.contains('collapsed');
       set(open);
@@ -50,4 +52,10 @@ export function initSections() {
       store(saved);
     });
   });
+}
+
+// Open a sidebar section by its heading text (does not change the remembered choice).
+export function openSection(name) {
+  const f = openers.get(name);
+  if (f) f();
 }

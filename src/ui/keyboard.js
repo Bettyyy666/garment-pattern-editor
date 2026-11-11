@@ -7,7 +7,7 @@ import { render } from './render.js';
 import { finishDraft, setTool } from './tools.js';
 import { fit } from './viewport.js';
 
-export const KEYS = { v: 'select', h: 'pan', p: 'point', l: 'line', c: 'curve', e: 'erase' };
+export const KEYS = { v: 'select', h: 'pan', p: 'point', l: 'line', c: 'curve', e: 'erase', a: 'dart' };
 
 export function initKeyboard() {
   addEventListener('keydown', (e) => {
@@ -44,7 +44,7 @@ export function initKeyboard() {
       render();
       return;
     }
-    if (e.key === 'Enter' && app.draft) {
+    if (e.key === 'Enter' && app.draft && app.draft.type !== 'dart') {
       finishDraft();
       return;
     }

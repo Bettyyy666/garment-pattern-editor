@@ -11,7 +11,7 @@ import { resolveCut, splitTargets } from '../operations/split.js';
 import { isDirty } from '../spec.js';
 import { app, getMark, getPanel, pushHistory } from '../state.js';
 import { $ } from './dom.js';
-import { openDart } from './dart-view.js';
+import { dartsHTML, wireDarts } from './dart-editor.js';
 import { toast } from './toast.js';
 import { render } from './render.js';
 import { esc, slug } from '../util.js';
@@ -127,7 +127,6 @@ const DEG = 180 / Math.PI;
 // Intrinsic shape table (edge length + turning angle) and the panel's darts.
 function shapeHTML(p) {
   const S = p.shape,
-    D = p.darts || [],
     num = (attr, v, step, extra = '') =>
       `<input class="input num" ${attr} type="number" step="${step}" value="${v}" ${extra}>`;
   return `<h3 class="sub">Shape <span>edge length · turning angle</span></h3>
@@ -138,15 +137,7 @@ function shapeHTML(p) {
           `<tr><td>${i}${S.curve[i] ? ` <em>${S.curve[i].k}</em>` : ''}</td><td>${num(`data-shape="len" data-i="${i}"`, l.toFixed(2), 0.1, 'min="0.01"')}</td><td>${num(`data-shape="turn" data-i="${i}"`, (S.turn[i] * DEG).toFixed(1), 0.5, i ? '' : 'disabled title="Vertex 0 is set by closure"')}</td></tr>`,
       )
       .join('')}</tbody></table></div>
-    <h3 class="sub">Darts <span>cone point · angle · cut</span></h3>
-    ${
-      D.length
-        ? `<table class="itab"><thead><tr><th>At</th><th>Defect (°)</th><th>Cut (°)</th><th style="width:64px"></th></tr></thead><tbody>${D.map(
-            (d, j) =>
-              `<tr><td>${d.at[0].toFixed(1)}, ${d.at[1].toFixed(1)}</td><td>${num(`data-dart="defect" data-j="${j}"`, (d.defect * DEG).toFixed(1), 1, 'min="0" max="90"')}</td><td>${num(`data-dart="cut" data-j="${j}"`, (d.cut * DEG).toFixed(1), 5)}</td><td><button class="linkbtn" data-dart-open="${j}" title="Open the cone-dart solver">Open</button> <button class="linkbtn" data-dart-del="${j}" title="Remove dart">×</button></td></tr>`,
-          ).join('')}</tbody></table>`
-        : '<p class="hint-text">No darts. Place a point inside the panel and press <b>Add dart</b>.</p>'
-    }`;
+    ${dartsHTML(p)}`;
 }
 function wireShape(box, p) {
   box.querySelectorAll('[data-shape]').forEach((inp) =>
@@ -169,26 +160,7 @@ function wireShape(box, p) {
       renderAll();
     }),
   );
-  box.querySelectorAll('[data-dart]').forEach((inp) =>
-    inp.addEventListener('change', () => {
-      const v = parseFloat(inp.value) / DEG,
-        k = inp.dataset.dart;
-      if (!Number.isFinite(v) || (k === 'defect' && (v < 0 || v > Math.PI / 2))) return renderInspector();
-      pushHistory();
-      p.darts[+inp.dataset.j][k] = v;
-      renderAll();
-    }),
-  );
-  box
-    .querySelectorAll('[data-dart-open]')
-    .forEach((b) => b.addEventListener('click', () => openDart(p.id, p.darts[+b.dataset.dartOpen].id)));
-  box.querySelectorAll('[data-dart-del]').forEach((b) =>
-    b.addEventListener('click', () => {
-      pushHistory();
-      p.darts.splice(+b.dataset.dartDel, 1);
-      renderAll();
-    }),
-  );
+  wireDarts(box, p);
 }
 export function renderAll() {
   syncShapes();

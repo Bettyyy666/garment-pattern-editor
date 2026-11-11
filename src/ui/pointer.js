@@ -9,6 +9,7 @@ import { render } from './render.js';
 import { placePoint, snap } from './snapping.js';
 import { toast } from './toast.js';
 import { finishDraft } from './tools.js';
+import { insertDart } from '../operations/dart.js';
 import { rect, toWorld, zoomAt } from './viewport.js';
 
 export const pointers = new Map();
@@ -52,6 +53,27 @@ export function initPointer() {
     }
     if (e.button !== 0) return;
     const t = e.target.closest && e.target.closest('[data-pid],[data-mid]');
+    // Clicking a dart apex (any tool but erase) selects that dart for editing.
+    const dt = e.target.closest && e.target.closest('[data-did]');
+    if (dt && app.tool !== 'erase' && !(app.draft && app.draft.type === 'dart')) {
+      app.sel = { kind: 'panel', id: dt.dataset.dpid };
+      app.dartSel = dt.dataset.did;
+      renderAll();
+      return;
+    }
+    if (app.tool === 'dart') {
+      if (!app.draft) {
+        const pid = t && t.dataset.pid;
+        if (!pid) return toast('Click inside a panel to place the dart apex.', true);
+        app.draft = { type: 'dart', pid, pts: [w] };
+      } else {
+        const err = insertDart(getPanel(app.draft.pid), app.draft.pts[0], w);
+        if (err) toast(err, true);
+        app.draft = null;
+      }
+      render();
+      return;
+    }
     if (app.tool === 'select') {
       if (t && t.dataset.mid) {
         app.sel = { kind: 'mark', id: t.dataset.mid };

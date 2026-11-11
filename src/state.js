@@ -26,6 +26,7 @@ export const app = {
   traceSrc: null,
   traceRes: null,
   downloads: null,
+  dartSel: null, // id of the dart being edited in the Darts section (highlighted in 2D)
   dartView: null, // open single-cone dart dialog: { pid, did, view options, camera, snap }
 };
 export const nid = (p) => p + app.uid++;

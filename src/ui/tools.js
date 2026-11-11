@@ -14,13 +14,14 @@ export const HINTS = {
   line: 'Click a start point, then an end point. Draw across the panel edges to make a cut. Shift locks to 45°.',
   curve: 'Click to add points along the curve. Double-click or press Enter to finish. Esc cancels.',
   erase: 'Click a point or line to delete it.',
+  dart: 'Click inside a panel to place the dart apex, then click toward the edge where the dart opens. Esc cancels.',
 };
 export function setTool(t) {
   app.tool = t;
   app.draft = null;
   app.snapInfo = null;
   document.querySelectorAll('.tool').forEach((b) => b.setAttribute('aria-pressed', b.dataset.tool === t));
-  svg.className.baseVal = ['point', 'line', 'curve'].includes(t)
+  svg.className.baseVal = ['point', 'line', 'curve', 'dart'].includes(t)
     ? 'draw'
     : t === 'pan'
       ? 'pan'
