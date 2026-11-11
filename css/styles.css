@@ -18,6 +18,14 @@
   --ink: #1d2421;
   --chalk: #2a63ff;
   --sa: rgba(251, 250, 246, 0.28);
+  --dart-gold: #c98d12;
+  --lock-blue: #1d8fc4;
+  --cone-face: #e8a0b4;
+  --pocket-face: #8fb3e8;
+  --dd-pane: #f7f8f8;
+  --dd-ref: #8a8f8d;
+  --turn-pos: #2aa597;
+  --turn-neg: #d35d93;
   --font-ui: 'Instrument Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
 }
@@ -41,6 +49,14 @@
     --ink: #1d2421;
     --chalk: #2a63ff;
     --sa: rgba(241, 239, 232, 0.2);
+    --dart-gold: #f0bd50;
+    --lock-blue: #55caff;
+    --cone-face: #e8a0b4;
+    --pocket-face: #8fb3e8;
+    --dd-pane: #121816;
+    --dd-ref: #aaaaaa;
+    --turn-pos: #66d9cc;
+    --turn-neg: #f39bc4;
     color-scheme: dark;
   }
 }
@@ -63,6 +79,14 @@
   --ink: #1d2421;
   --chalk: #2a63ff;
   --sa: rgba(241, 239, 232, 0.2);
+  --dart-gold: #f0bd50;
+  --lock-blue: #55caff;
+  --cone-face: #e8a0b4;
+  --pocket-face: #8fb3e8;
+  --dd-pane: #121816;
+  --dd-ref: #aaaaaa;
+  --turn-pos: #66d9cc;
+  --turn-neg: #f39bc4;
   color-scheme: dark;
 }
 [hidden] {
@@ -257,6 +281,64 @@ main {
   align-items: center;
   pointer-events: none;
   flex-wrap: wrap;
+}
+.seg {
+  display: flex;
+}
+.seg .btn {
+  border-radius: 0;
+}
+.seg .btn:first-child {
+  border-radius: 6px 0 0 6px;
+}
+.seg .btn:last-child {
+  border-radius: 0 6px 6px 0;
+  margin-left: -1px;
+}
+.seg .btn[aria-pressed='true'] {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+}
+#view3d {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+  user-select: none;
+  cursor: grab;
+}
+#view3d.dragging {
+  cursor: grabbing;
+}
+main.is3d #canvas,
+main:not(.is3d) #view3d,
+main.is3d #pos {
+  display: none;
+}
+.p3 {
+  stroke: var(--ink);
+  stroke-linejoin: round;
+  cursor: pointer;
+}
+.p3.back {
+  filter: brightness(0.8);
+}
+.p3.sel {
+  stroke: var(--sel);
+}
+.g3-floor {
+  stroke: var(--mat-major);
+  fill: none;
+}
+.g3-axis {
+  stroke: var(--mat-major);
+  stroke-dasharray: 4 4;
+}
+.g3-text {
+  fill: var(--mat-major);
 }
 .chip {
   background: rgba(10, 24, 19, 0.72);
@@ -692,6 +774,62 @@ svg text {
 .vtx {
   fill: var(--ink);
 }
+.dart-cut {
+  stroke: var(--danger);
+  fill: none;
+  stroke-dasharray: 5 3;
+}
+.dart-apex {
+  fill: var(--danger);
+  stroke: var(--paper);
+}
+.dart-tag {
+  fill: var(--danger);
+  paint-order: stroke;
+  stroke: var(--paper);
+  pointer-events: none;
+}
+h3.sub {
+  margin: 14px 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+h3.sub span {
+  font-weight: 400;
+  color: var(--muted);
+}
+.itab-wrap {
+  max-height: 220px;
+  overflow: auto;
+}
+.itab {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 12px;
+  font-family: var(--font-mono);
+}
+.itab th {
+  text-align: left;
+  font-weight: 500;
+  color: var(--muted);
+  padding: 2px 4px;
+}
+.itab td {
+  padding: 2px 4px;
+}
+.itab em {
+  font-style: normal;
+  color: var(--muted);
+}
+.itab .input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 2px 4px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
 
 @media (max-width: 760px) {
   body {
@@ -743,4 +881,178 @@ svg text {
   .toast {
     transition: none;
   }
+}
+
+/* Single-cone dart dialog (three panes, as in the intrinsic-dart demo) */
+.dart-card {
+  width: min(1500px, 100%);
+  max-height: 94vh;
+  overflow: auto;
+}
+.dd-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.dd-controls,
+.dd-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  align-items: center;
+  font-size: 12px;
+}
+.dd-f {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.dd-f .input {
+  width: 72px;
+}
+.dd-f b {
+  font-family: var(--font-mono);
+  min-width: 34px;
+}
+.dd-bar label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.dd-bar .input {
+  width: auto;
+  padding: 3px 6px;
+}
+.dd-panes {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr 1fr;
+  gap: 10px;
+}
+@media (max-width: 1000px) {
+  .dd-panes {
+    grid-template-columns: 1fr;
+  }
+}
+.dd-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.dd-title {
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+}
+.dd-svg {
+  width: 100%;
+  height: min(52vh, 460px);
+  background: var(--dd-pane);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  touch-action: none;
+  user-select: none;
+}
+.dd-3d {
+  cursor: grab;
+}
+.dd-cbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--muted);
+}
+.dd-cbar i {
+  flex: 1;
+  height: 8px;
+  border-radius: 4px;
+}
+.dd-stats {
+  margin: 0;
+  font-size: 11.5px;
+  font-family: var(--font-mono);
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.dd-stats.err {
+  color: var(--danger);
+}
+.dd-ref {
+  stroke: var(--dd-ref);
+  fill: none;
+}
+.dd-mesh {
+  stroke: var(--muted);
+  opacity: 0.45;
+  fill: none;
+}
+.dd-lab {
+  fill: var(--muted);
+  pointer-events: none;
+}
+.dd-coord {
+  fill: var(--lock-blue);
+  pointer-events: none;
+}
+.dd-gold {
+  stroke: var(--dart-gold);
+  fill: none;
+}
+.dd-cone {
+  fill: var(--dart-gold);
+  stroke: var(--ink);
+  cursor: move;
+}
+.dd-handle {
+  fill: var(--paper);
+  stroke: var(--ink);
+  cursor: grab;
+}
+.dd-vtx {
+  stroke: var(--ink);
+}
+.dd-vtx.alock {
+  stroke: var(--dart-gold);
+}
+.dd-slock {
+  fill: none;
+  stroke: var(--lock-blue);
+}
+.dd-marq {
+  fill: none;
+  stroke-dasharray: 4 3;
+}
+.dd-end0 {
+  fill: var(--paper);
+  stroke: var(--ink);
+}
+.dd-end1 {
+  fill: var(--dd-ref);
+  stroke: var(--ink);
+}
+.dd-turn-pos {
+  stroke: var(--turn-pos);
+  fill: color-mix(in srgb, var(--turn-pos) 22%, transparent);
+}
+.dd-turn-neg {
+  stroke: var(--turn-neg);
+  fill: color-mix(in srgb, var(--turn-neg) 22%, transparent);
+}
+.dd-turn-pos-t {
+  fill: var(--turn-pos);
+}
+.dd-turn-neg-t {
+  fill: var(--turn-neg);
+}
+.dd-cone-face {
+  fill: var(--cone-face);
+}
+.dd-pocket-face {
+  fill: var(--pocket-face);
+}
+.dd-face-edge {
+  stroke: var(--ink);
+  stroke-opacity: 0.35;
 }

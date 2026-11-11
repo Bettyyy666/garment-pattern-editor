@@ -3,6 +3,8 @@ import { STORAGE_KEY } from './config.js';
 import { OPERATIONS } from './operations/index.js';
 import { initPointer } from './ui/pointer.js';
 import { initKeyboard } from './ui/keyboard.js';
+import { initDartView } from './ui/dart-view.js';
+import { initView3d } from './ui/view3d.js';
 import { loadGarmentCode } from './io/garmentcode.js';
 import { commitTrace, runTrace } from './io/image-trace.js';
 import { openFile } from './io/open-file.js';
@@ -21,13 +23,26 @@ document.querySelectorAll('.tool').forEach((b) => b.addEventListener('click', ()
 $('#undo').onclick = undo;
 $('#redo').onclick = redo;
 $('#fit').onclick = fit;
-$('#reset').onclick = () => {
-  pushHistory();
-  loadSample();
-  setSource('Showing the built-in bodice sample.');
-  renderAll();
-  fit();
-  toast('Sample restored. Undo to go back.');
+const DEFAULT_SPEC = 'examples/default_specification.json';
+// Load the default garment (a GarmentCode specification); fall back to the built-in bodice sample.
+async function loadDefault() {
+  try {
+    const r = await fetch(DEFAULT_SPEC);
+    if (!r.ok) throw new Error(r.statusText);
+    const text = await r.text();
+    loadGarmentCode(JSON.parse(text), 'default_specification.json', text);
+    setSource(`Showing the default garment <b>${esc(DEFAULT_SPEC)}</b>.`);
+  } catch {
+    pushHistory();
+    loadSample();
+    setSource('Showing the built-in bodice sample (the default garment could not be loaded).');
+    renderAll();
+    fit();
+  }
+}
+$('#reset').onclick = async () => {
+  await loadDefault();
+  toast('Default garment restored. Undo to go back.');
 };
 OPERATIONS.forEach((op) => {
   $(op.button).onclick = op.run;
@@ -141,6 +156,8 @@ addEventListener(
 
 initPointer();
 initKeyboard();
+initDartView();
+initView3d();
 initDownloads();
 
 new ResizeObserver(() => {
@@ -157,12 +174,12 @@ try {
     loadGarmentCode(JSON.parse(s.text), s.name, s.text, { version: s.version, savedAt: s.savedAt });
     restored = true;
     setSource(
-      `Restored your last save: <b>${esc(s.name)}</b> (version ${s.version}). Reset sample or open a file to start over.`,
+      `Restored your last save: <b>${esc(s.name)}</b> (version ${s.version}). Reset to default or open a file to start over.`,
     );
   }
 } catch {}
+if (!restored) await loadDefault();
 app.undoStack = [];
 app.redoStack = [];
 setTool('select');
-if (!restored) setSource('Showing the built-in bodice sample.');
 renderAll();

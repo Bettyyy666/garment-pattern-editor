@@ -6,14 +6,18 @@ patterns stored as GarmentCode specification JSON. Read this before adding featu
 ## Run, lint, format
 
 ```bash
-npm start              # serves the repo at http://localhost:8000 (npx http-server, cache off)
-python3 -m http.server 8000   # alternative, no npm needed
+git submodule update --init   # once: intrinsic-dart at a pinned commit in server/intrinsic-dart
+npm start              # server/dart_server.py via uv: serves the repo + dart solver API on :8000 (cache off)
+npm run start:static   # editor only (npx http-server), darts cannot be solved
 npm install            # once, for dev tools only
 npm run lint           # eslint src (must pass with 0 errors)
 npm run format         # prettier: src/**/*.js, css, index.html
 ```
 
-- No build step and no runtime dependencies. Plain ES modules loaded by `<script type="module" src="src/main.js">`.
+- No build step and no runtime JS dependencies. Plain ES modules loaded by `<script type="module" src="src/main.js">`.
+- Dart solving runs intrinsic-dart's Python code unchanged in `server/dart_server.py` (POST `/api/dart/solve`,
+  the same calls as the demo's `set_outline` / `update_solution`). Do not port the solver to JS: results must
+  match the repo. Python deps are pinned in `server/pyproject.toml` to intrinsic-dart's `uv.lock` versions.
 - Opening `index.html` straight from disk does not work, because ES modules need HTTP.
 - Run `npm run lint` and `npm run format` before every commit.
 
@@ -26,12 +30,19 @@ src/main.js          entry: wires DOM events, calls init*() functions, boots the
 src/state.js         `app` store, undo/redo (pushHistory/undo/redo/snapshot/restore), nid()
 src/config.js        constants (TINTS, STITCH_COLORS, VEPS, STORAGE_KEY)
 src/geometry.js      pure vector/polygon math + polygon-level cut detection (splitOnce/splitPolygon)
-src/model/           document model: edges, panels, stitches, marks, templates
+src/model/           document model: edges, panels, stitches, marks, templates; intrinsic shape (intrinsic.js);
+                     dart settings + solver outline sampling (dart-solve.js); darts read from same-panel
+                     stitches and closed into the reference outline (dart-detect.js)
 src/operations/      design operations + registry (operations/index.js)
-src/io/              GarmentCode JSON parse/build, PNG tracing, file routing
+src/io/              GarmentCode JSON parse/build, PNG tracing, file routing, dart solver client (dart-server.js),
+                     per-panel ConeDartModel analysis written to panels[k].intrinsic (intrinsic-analysis.js)
+server/              dart_server.py (static files + solver API), pyproject.toml, intrinsic-dart (git submodule)
 src/spec.js          saved specification: save, dirty state, export dialog, download
-src/ui/              render (SVG), inspector, pointer, keyboard, tools, viewport, snapping, toast, dom
-examples/            skirt_specification.json + skirt_pattern.png for manual testing
+src/ui/              render (SVG), inspector, pointer, keyboard, tools, viewport, snapping, toast, dom,
+                     dart-view (the three-pane cone-dart dialog), view3d (2D/3D toggle: panels placed rigidly
+                     by place.t/rot via world3D, stitches as connectors; no simulation)
+examples/            default_specification.json (loaded at startup and by Reset to default),
+                     skirt_specification.json + skirt_pattern.png for manual testing
 ```
 
 ### The `app` store (src/state.js)
@@ -45,6 +56,8 @@ so never add a module-level `let` that other modules need to write. Add a field 
   - `isDirty()` compares `spec.snap` with `snapshot()`.
   - `extra` keeps the source file's `parameters` and `properties` so they are written back on save.
 - UI state lives in `app.sel`, `app.tool`, `app.draft`, `app.drag`, `app.view` (pan/zoom), `app.opts` (view toggles) and similar fields.
+- `app.view3d` (`on`, camera `yaw/el/c/half`) is the 3D view. While it is on, `render()` and `fit()` delegate to
+  `ui/view3d.js`, so the usual mutation pattern updates the 3D view too.
 
 ### Mutation pattern (always follow it)
 
@@ -71,7 +84,18 @@ renderAll();            // 3. re-render the canvas and the inspector
 
 All editor geometry is in **centimetres, canvas coordinates (x right, y down)**.
 
-- **Panel** `{ id, name, edges, tint, place, label }`
+- **Panel** `{ id, name, shape, darts, edges, tint, place, label }`
+  - `shape = { start, dir, len, turn, curve }` is the intrinsic representation (edge lengths, turning angles);
+    it is re-derived from `edges` in `snapshot()`/`renderAll()`, and inspector edits rebuild `edges` from it.
+  - `darts[i] = { id, at, defect, cut, angleW, scaleW, lengthW, smooth, cutMode, cutW, angleLocks, scaleLocks }`
+    (canvas cm, radians; locks are perimeter fractions from vertex 0). `solveDart()` in `io/dart-server.js`
+    sends the sampled outline (solver frame: y up, CCW) to the server and reshapes its JSON for `ui/dart-view.js`.
+  - A dart with `legs: [eidIn, eidOut]` is a GarmentCode dart: two adjacent edges stitched together, apex at their
+    shared vertex, Ω = wedge angle, cut = bisector. On import these are detected from the stitches when the file
+    has no `darts`; the solver outline closes the legs into one mouth segment (`closedEdges`).
+  - After every load, `analyzeLoaded()` (spec.js) posts each panel to `/api/dart/analyze` (ConeDartModel's
+    `original_lengths` / `original_turns`, `ray_cut` per dart). Results live outside `app.state` (so loading is not
+    dirty) and `buildSpec()` writes them as `panels[k].intrinsic` while they still match the panel.
   - `edges` is a closed loop: `edges[i].b` must equal `edges[i+1].a`.
   - `place = { t:[x,y,z], rot:[rx,ry,rz], ox, oy }` holds the GarmentCode frame plus a 2D layout offset.
   - Conversion between frames:

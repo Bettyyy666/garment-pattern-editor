@@ -1,6 +1,6 @@
 // Stitches ({ sid, e: [eidA, eidB], cut? }) and the edge-level cut that keeps them consistent.
 import { VEPS } from '../config.js';
-import { area, dist } from '../geometry.js';
+import { area, dist, pip } from '../geometry.js';
 import { edgeLen, edgeRev, edgeSplit, fitCubic, fracAtParam, paramAtFrac, paramAtPoint } from './edges.js';
 import { panelPts } from './panels.js';
 import { app, nid } from '../state.js';
@@ -94,6 +94,10 @@ export function cutPanel(q, c, isCurve) {
   const A = mk([...seq(iE, iX), cutA]),
     B = mk([...seq(iX, iE), cutB]);
   if (Math.abs(area(panelPts(A))) < 0.05 || Math.abs(area(panelPts(B))) < 0.05) return null;
+  // A stitched dart goes with its legs; a free cone point with the piece that contains it.
+  const inA = new Set(A.edges.map((e) => e.eid));
+  A.darts = (q.darts || []).filter((d) => (d.legs ? inA.has(d.legs[0]) : pip(d.at, panelPts(A))));
+  B.darts = (q.darts || []).filter((d) => !A.darts.includes(d));
   app.state.panels.splice(app.state.panels.indexOf(q), 1, A, B);
   app.state.stitches.push({ sid: nid('s'), e: [cutA.eid, cutB.eid], cut: true });
   return [A, B];

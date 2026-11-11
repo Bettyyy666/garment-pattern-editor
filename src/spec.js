@@ -1,6 +1,7 @@
 // Saved specification: save, dirty state, export dialog and download.
 import { STORAGE_KEY } from './config.js';
 import { buildSpec, isGarmentCode, loadGarmentCode } from './io/garmentcode.js';
+import { analyzeAll } from './io/intrinsic-analysis.js';
 import { app, snapshot } from './state.js';
 import { $ } from './ui/dom.js';
 import { fmtTime, renderInspector } from './ui/inspector.js';
@@ -9,7 +10,31 @@ import { esc } from './util.js';
 
 export const isDirty = () => app.spec.snap !== snapshot();
 
-export function saveSpec() {
+// After a specification loads: compute every panel's intrinsic description (io/intrinsic-analysis.js) and, while
+// nothing has been edited, write it into the loaded specification text so Export shows it.
+export async function analyzeLoaded(rewrite) {
+  const snap = app.spec.snap,
+    r = await analyzeAll();
+  if (r.offline) {
+    toast(
+      'Intrinsic analysis needs the dart solver server (npm start). Darts were read from the stitches.',
+      true,
+    );
+    return;
+  }
+  if (rewrite && app.spec.snap === snap && !isDirty()) {
+    app.spec.text = JSON.stringify(buildSpec(), null, 2);
+    if (!$('#modal').hidden) fillExport();
+  }
+  const darts = app.state.panels.reduce((s, p) => s + (p.darts || []).length, 0);
+  toast(
+    `ConeDartModel: edge lengths and turns for ${r.done} panels, ${darts} darts (apex, Ω, cut) stored in the specification.` +
+      (r.failed ? ` ${r.failed} panels could not be analyzed.` : ''),
+  );
+}
+
+export async function saveSpec() {
+  await analyzeAll();
   const o = buildSpec();
   app.spec.text = JSON.stringify(o, null, 2);
   app.spec.version++;

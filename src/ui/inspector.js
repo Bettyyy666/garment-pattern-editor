@@ -2,13 +2,17 @@
 import { STITCH_COLORS, TINTS } from '../config.js';
 import { area, pathLen, perimeter } from '../geometry.js';
 import { markPts } from '../model/marks.js';
-import { bbox, panelPts, uniqueName } from '../model/panels.js';
+import { edgesFromShape } from '../model/intrinsic.js';
+import { bbox, panelPts, syncShapes, uniqueName } from '../model/panels.js';
 import { edgeIndex } from '../model/stitches.js';
+import { DART_DEFECT_DEG, resolveDart } from '../operations/dart.js';
 import { gussetParams, resolveGusset } from '../operations/gusset.js';
 import { resolveCut, splitTargets } from '../operations/split.js';
 import { isDirty } from '../spec.js';
 import { app, getMark, getPanel, pushHistory } from '../state.js';
 import { $ } from './dom.js';
+import { openDart } from './dart-view.js';
+import { toast } from './toast.js';
 import { render } from './render.js';
 import { esc, slug } from '../util.js';
 
@@ -57,6 +61,11 @@ export function renderInspector() {
     : g.kind === 'diamond'
       ? `Opens <b>${esc(g.seams[0][0].p.name)}</b>–<b>${esc(g.seams[0][1].p.name)}</b> and <b>${esc(g.seams[1][0].p.name)}</b>–<b>${esc(g.seams[1][1].p.name)}</b> for ${gp.len} cm from the corner, keeps the seam across it, and sews in a ${gp.width} cm wide diamond.`
       : `Opens <b>${esc(g.seams[0][0].p.name)}</b>–<b>${esc(g.seams[0][1].p.name)}</b> for ${gp.len} cm from the open end and sews in a ${gp.width} cm wide triangle.`;
+  const dr = resolveDart();
+  $('#op-dart').disabled = !!dr.err;
+  $('#dart-hint').innerHTML = dr.err
+    ? esc(dr.err)
+    : `Adds a ${DART_DEFECT_DEG}° dart (cone point) to <b>${esc(dr.p.name)}</b>, cut toward the nearest edge.`;
   const panelSel = app.sel && app.sel.kind === 'panel' ? getPanel(app.sel.id) : null;
   ['op-mirror', 'op-rotate', 'op-dup', 'op-del'].forEach(
     (id) => ($('#' + id).disabled = !(panelSel || (id === 'op-del' && app.sel))),
@@ -82,6 +91,8 @@ export function renderInspector() {
     <dt>Width × height</dt><dd>${(b.x1 - b.x0).toFixed(1)} × ${(b.y1 - b.y0).toFixed(1)}</dd><dt>Edges</dt><dd>${panelSel.edges.length}</dd>
     ${panelSel.label ? `<dt>Label</dt><dd>${esc(panelSel.label)}</dd>` : ''}<dt>Stitched edges</dt><dd>${rows.length}</dd></dl>
     ${rows.length ? `<ul class="slist">${rows.map((r) => `<li><span class="sdot" style="background:${STITCH_COLORS[r.si % STITCH_COLORS.length]}">${r.si + 1}</span>${r.txt}${r.cut ? ' <em>new seam</em>' : ''}</li>`).join('')}</ul>` : ''}`;
+    box.insertAdjacentHTML('beforeend', shapeHTML(panelSel));
+    wireShape(box, panelSel);
     $('#pname').addEventListener('change', (e) => {
       const v = slug(e.target.value);
       if (!v || v === panelSel.name) {
@@ -112,7 +123,75 @@ export function renderInspector() {
       .join('') || '<li class="hint-text">No panels. Add one below.</li>';
   $('#stitch-count').textContent = app.state.stitches.length ? `${app.state.stitches.length} stitches` : '';
 }
+const DEG = 180 / Math.PI;
+// Intrinsic shape table (edge length + turning angle) and the panel's darts.
+function shapeHTML(p) {
+  const S = p.shape,
+    D = p.darts || [],
+    num = (attr, v, step, extra = '') =>
+      `<input class="input num" ${attr} type="number" step="${step}" value="${v}" ${extra}>`;
+  return `<h3 class="sub">Shape <span>edge length · turning angle</span></h3>
+    <div class="itab-wrap"><table class="itab"><thead><tr><th>Edge</th><th>Length (cm)</th><th>Turn (°)</th></tr></thead><tbody>
+    ${S.len
+      .map(
+        (l, i) =>
+          `<tr><td>${i}${S.curve[i] ? ` <em>${S.curve[i].k}</em>` : ''}</td><td>${num(`data-shape="len" data-i="${i}"`, l.toFixed(2), 0.1, 'min="0.01"')}</td><td>${num(`data-shape="turn" data-i="${i}"`, (S.turn[i] * DEG).toFixed(1), 0.5, i ? '' : 'disabled title="Vertex 0 is set by closure"')}</td></tr>`,
+      )
+      .join('')}</tbody></table></div>
+    <h3 class="sub">Darts <span>cone point · angle · cut</span></h3>
+    ${
+      D.length
+        ? `<table class="itab"><thead><tr><th>At</th><th>Defect (°)</th><th>Cut (°)</th><th style="width:64px"></th></tr></thead><tbody>${D.map(
+            (d, j) =>
+              `<tr><td>${d.at[0].toFixed(1)}, ${d.at[1].toFixed(1)}</td><td>${num(`data-dart="defect" data-j="${j}"`, (d.defect * DEG).toFixed(1), 1, 'min="0" max="90"')}</td><td>${num(`data-dart="cut" data-j="${j}"`, (d.cut * DEG).toFixed(1), 5)}</td><td><button class="linkbtn" data-dart-open="${j}" title="Open the cone-dart solver">Open</button> <button class="linkbtn" data-dart-del="${j}" title="Remove dart">×</button></td></tr>`,
+          ).join('')}</tbody></table>`
+        : '<p class="hint-text">No darts. Place a point inside the panel and press <b>Add dart</b>.</p>'
+    }`;
+}
+function wireShape(box, p) {
+  box.querySelectorAll('[data-shape]').forEach((inp) =>
+    inp.addEventListener('change', () => {
+      const k = inp.dataset.shape,
+        i = +inp.dataset.i,
+        v = parseFloat(inp.value),
+        shape = structuredClone(p.shape);
+      if (!Number.isFinite(v) || (k === 'len' && v <= 0)) return renderInspector();
+      shape[k][i] = k === 'turn' ? v / DEG : v;
+      let edges;
+      try {
+        edges = edgesFromShape(shape, p.edges, k === 'len' ? [i] : []);
+      } catch (err) {
+        toast(err.message, true);
+        return renderInspector();
+      }
+      pushHistory();
+      p.edges = edges;
+      renderAll();
+    }),
+  );
+  box.querySelectorAll('[data-dart]').forEach((inp) =>
+    inp.addEventListener('change', () => {
+      const v = parseFloat(inp.value) / DEG,
+        k = inp.dataset.dart;
+      if (!Number.isFinite(v) || (k === 'defect' && (v < 0 || v > Math.PI / 2))) return renderInspector();
+      pushHistory();
+      p.darts[+inp.dataset.j][k] = v;
+      renderAll();
+    }),
+  );
+  box
+    .querySelectorAll('[data-dart-open]')
+    .forEach((b) => b.addEventListener('click', () => openDart(p.id, p.darts[+b.dataset.dartOpen].id)));
+  box.querySelectorAll('[data-dart-del]').forEach((b) =>
+    b.addEventListener('click', () => {
+      pushHistory();
+      p.darts.splice(+b.dataset.dartDel, 1);
+      renderAll();
+    }),
+  );
+}
 export function renderAll() {
+  syncShapes();
   render();
   renderInspector();
 }

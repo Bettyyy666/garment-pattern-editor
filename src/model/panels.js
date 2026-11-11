@@ -1,8 +1,11 @@
-// Panel model: { id, name, edges, tint, place, label }. `place` keeps the GarmentCode frame
+// Panel model: { id, name, shape, darts, edges, tint, place, label }. `place` keeps the GarmentCode frame
 // (translation, rotation) plus a 2D layout offset (ox, oy) so moving panels on the canvas never changes 3D placement.
+// `shape` is the intrinsic representation (edge lengths, turning angles, see model/intrinsic.js) and `darts` are
+// cone points { id, at, defect, cut } (canvas cm, radians). `edges` is the canvas geometry rebuilt from `shape`.
 import { TINTS } from '../config.js';
 import { add, clean, dist, mul, sub } from '../geometry.js';
 import { arcSpan, edgeMap, edgeSample } from './edges.js';
+import { shapeFromEdges } from './intrinsic.js';
 import { addMark, moveMarksOf } from './marks.js';
 import { TEMPLATES } from './templates.js';
 import { app, nid, snapshot } from '../state.js';
@@ -34,8 +37,16 @@ export function translatePanel(p, d) {
   p.edges = p.edges.map((e) => edgeMap(e, (q) => add(q, d)));
   p.place.ox += d[0];
   p.place.oy += d[1];
+  if (p.darts) p.darts.forEach((t) => (t.at = add(t.at, d)));
+  if (p.shape) p.shape.start = add(p.shape.start, d);
   moveMarksOf(p.id, (q) => add(q, d));
 }
+// Re-derive the intrinsic shape after an operation edited `edges` on the canvas.
+export function syncShape(p) {
+  p.shape = shapeFromEdges(p.edges);
+  if (!p.darts) p.darts = [];
+}
+export const syncShapes = () => app.state.panels.forEach(syncShape);
 export function fromLocal(pl, v) {
   const rz = ((pl.rot[2] || 0) * Math.PI) / 180,
     c = Math.cos(rz),

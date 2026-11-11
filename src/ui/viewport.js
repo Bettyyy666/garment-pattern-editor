@@ -3,6 +3,7 @@ import { allBox } from '../model/panels.js';
 import { app } from '../state.js';
 import { svg } from './dom.js';
 import { render } from './render.js';
+import { fit3d } from './view3d.js';
 
 export const rect = () => svg.getBoundingClientRect();
 export function toWorld(e) {
@@ -10,6 +11,7 @@ export function toWorld(e) {
   return [(e.clientX - r.left - app.view.ox) / app.view.s, (e.clientY - r.top - app.view.oy) / app.view.s];
 }
 export function fit() {
+  if (app.view3d.on) return fit3d();
   const r = rect();
   if (!r.width || !app.state.panels.length) return;
   const b = allBox();

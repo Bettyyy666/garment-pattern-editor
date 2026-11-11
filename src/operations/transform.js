@@ -14,6 +14,13 @@ export function transformPanel(fn, reflect) {
   const c = centroid(panelPts(p));
   p.edges = p.edges.map((e) => edgeMap(e, (q) => fn(q, c), reflect));
   if (reflect) p.edges = p.edges.reverse().map(edgeRev);
+  (p.darts || []).forEach((t) => {
+    const a = fn(t.at, c),
+      b = fn(add(t.at, [Math.cos(t.cut), Math.sin(t.cut)]), c);
+    t.at = a;
+    t.cut = Math.atan2(b[1] - a[1], b[0] - a[0]);
+    if (reflect && t.legs) t.legs = t.legs.slice().reverse(); // the loop runs the other way now
+  });
   moveMarksOf(p.id, (q) => fn(q, c));
   renderAll();
 }
@@ -29,10 +36,18 @@ export function duplicate() {
     id: nid('p'),
     name: uniqueName(p.name + '_copy'),
     edges: p.edges.map((e) => ({ ...edgeMap(e, (v) => add(v, off)), eid: nid('e') })),
+    darts: [],
     tint: app.tintN++ % TINTS.length,
     place: { ...p.place },
     label: p.label,
   };
+  const eidOf = new Map(p.edges.map((e, i) => [e.eid, q.edges[i].eid]));
+  q.darts = (p.darts || []).map((t) => ({
+    ...t,
+    id: nid('d'),
+    at: add(t.at, off),
+    ...(t.legs ? { legs: t.legs.map((e) => eidOf.get(e)) } : {}),
+  }));
   app.state.panels.push(q);
   app.sel = { kind: 'panel', id: q.id };
   renderAll();

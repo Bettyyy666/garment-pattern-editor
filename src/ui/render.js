@@ -2,6 +2,7 @@
 import { STITCH_COLORS, TINTS } from '../config.js';
 import { add, centroid, crSample, mul, norm, pathLen, pointAtFrac, sub } from '../geometry.js';
 import { edgeSample } from '../model/edges.js';
+import { rayCut } from '../model/intrinsic.js';
 import { markPts } from '../model/marks.js';
 import { dPanel, panelPts } from '../model/panels.js';
 import { edgeIndex } from '../model/stitches.js';
@@ -9,6 +10,7 @@ import { app } from '../state.js';
 import { $, world } from './dom.js';
 import { constrain } from './snapping.js';
 import { rect } from './viewport.js';
+import { render3d } from './view3d.js';
 import { dPath, esc, f3 } from '../util.js';
 
 export function hoverPt() {
@@ -38,6 +40,7 @@ export function renderStitches(px, EI) {
   return h;
 }
 export function render() {
+  if (app.view3d.on) return render3d();
   const s = app.view.s,
     px = (v) => v / s;
   world.setAttribute('transform', `translate(${f3(app.view.ox)} ${f3(app.view.oy)}) scale(${f3(s)})`);
@@ -78,6 +81,14 @@ export function render() {
     const c = centroid(panelPts(p));
     h += `<text class="panel-label" x="${f3(c[0])}" y="${f3(c[1])}" font-size="${px(11)}" stroke-width="${px(3)}" text-anchor="middle">${esc(p.name)}</text>`;
   }
+  for (const p of app.state.panels)
+    for (const d of p.darts || []) {
+      const a = d.at,
+        c = rayCut(panelPts(p), a, d.cut);
+      if (c)
+        h += `<path class="dart-cut" d="M${f3(a[0])} ${f3(a[1])}L${f3(c.point[0])} ${f3(c.point[1])}" stroke-width="1.6" vector-effect="non-scaling-stroke" style="pointer-events:none"/>`;
+      h += `<circle class="dart-apex" cx="${f3(a[0])}" cy="${f3(a[1])}" r="${px(4)}" stroke-width="${px(1.2)}" style="pointer-events:none"/><text class="dart-tag" x="${f3(a[0] + px(7))}" y="${f3(a[1] - px(7))}" font-size="${px(10)}" stroke-width="${px(3)}">${((d.defect * 180) / Math.PI).toFixed(0)}°</text>`;
+    }
   for (const m of app.state.marks) {
     const isSel = app.sel && app.sel.kind === 'mark' && app.sel.id === m.id;
     if (m.type === 'point') {

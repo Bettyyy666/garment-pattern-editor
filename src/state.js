@@ -1,4 +1,5 @@
 // Single mutable app store, undo/redo history and id generation.
+import { syncShapes } from './model/panels.js';
 import { renderAll } from './ui/inspector.js';
 
 export const app = {
@@ -13,6 +14,7 @@ export const app = {
   snapInfo: null,
   spaceDown: false,
   view: { s: 12, ox: 0, oy: 0 },
+  view3d: { on: false, yaw: 0.55, el: 0.3, c: [0, 0], half: 100, fitted: false }, // 3D placement view camera
   opts: { grid: true, sa: false, measure: true, verts: false, stitch: true, under: true },
   undoStack: [],
   redoStack: [],
@@ -24,11 +26,13 @@ export const app = {
   traceSrc: null,
   traceRes: null,
   downloads: null,
+  dartView: null, // open single-cone dart dialog: { pid, did, view options, camera, snap }
 };
 export const nid = (p) => p + app.uid++;
 export const getPanel = (id) => app.state.panels.find((p) => p.id === id),
   getMark = (id) => app.state.marks.find((m) => m.id === id);
-export const snapshot = () =>
+export const snapshot = () => (syncShapes(), snapshotRaw());
+const snapshotRaw = () =>
   JSON.stringify({
     panels: app.state.panels,
     marks: app.state.marks,

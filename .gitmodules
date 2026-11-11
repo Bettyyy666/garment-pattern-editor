@@ -1,0 +1,3 @@
+[submodule "server/intrinsic-dart"]
+	path = server/intrinsic-dart
+	url = https://github.com/panangam/intrinsic-dart.git

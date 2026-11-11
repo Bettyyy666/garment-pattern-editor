@@ -1,15 +1,29 @@
 // GarmentCode specification JSON <-> editor model.
 import { TINTS } from '../config.js';
 import { add, dot, len, mul, norm, perpL, sub } from '../geometry.js';
+import { stitchedDarts } from '../model/dart-detect.js';
 import { arcSpan } from '../model/edges.js';
 import { bbox, fromLocal, panelPts, toLocal, translatePanel } from '../model/panels.js';
-import { setSource } from '../spec.js';
+import { analyzeLoaded, setSource } from '../spec.js';
+import { intrinsicBlock } from './intrinsic-analysis.js';
 import { app, nid, pushHistory, snapshot } from '../state.js';
 import { renderAll } from '../ui/inspector.js';
 import { toast } from '../ui/toast.js';
 import { fit } from '../ui/viewport.js';
 import { esc, r4, slug } from '../util.js';
 
+const DEG = Math.PI / 180;
+// Cone-dart solver settings saved per dart (JSON name -> dart field); locks are perimeter fractions from vertex 0.
+const DART_KEYS = [
+  ['angle_weight', 'angleW'],
+  ['scale_weight', 'scaleW'],
+  ['length_weight', 'lengthW'],
+  ['smoothness', 'smooth'],
+  ['cut_length_mode', 'cutMode'],
+  ['cut_length_weight', 'cutW'],
+  ['angle_locks', 'angleLocks'],
+  ['scale_locks', 'scaleLocks'],
+];
 export const isGarmentCode = (o) =>
   o &&
   ((o.pattern && o.pattern.panels && !Array.isArray(o.pattern.panels)) ||
@@ -80,11 +94,31 @@ export function parseGarmentCode(o) {
       emap[name].push(e.eid);
       return e;
     });
-    panels.push({ name, edges, place, label: pn.label || null });
+    // Darts (intrinsic-dart cone points) in panel-local coordinates, angles in degrees: an editor extension.
+    const darts = (Array.isArray(pn.darts) ? pn.darts : []).map((d) => {
+      const pos = d.position.map((x) => x * unit),
+        c = (d.cut_angle || 0) * DEG,
+        at = W(pos),
+        q = W([pos[0] + Math.cos(c), pos[1] + Math.sin(c)]);
+      const st = d.settings || {},
+        dart = { id: nid('d'), at, defect: d.defect * DEG, cut: Math.atan2(q[1] - at[1], q[0] - at[0]) };
+      for (const [k, key] of DART_KEYS) if (st[k] !== undefined) dart[key] = st[k];
+      // Legs: the two panel edges (indices) a stitched dart is sewn from.
+      if (Array.isArray(d.legs) && d.legs.every((i) => emap[name][i]))
+        dart.legs = d.legs.map((i) => emap[name][i]);
+      return dart;
+    });
+    darts.fromFile = Array.isArray(pn.darts);
+    panels.push({ name, edges, darts, place, label: pn.label || null });
   }
   const stitches = (pat.stitches || [])
     .map((st) => ({ sid: nid('s'), e: (st || []).map((sd) => emap[sd.panel] && emap[sd.panel][sd.edge]) }))
     .filter((s) => s.e.length === 2 && s.e.every(Boolean));
+  // GarmentCode writes a dart as a stitch between two adjacent edges of one panel: read its apex, Ω and cut.
+  for (const p of panels) {
+    if (!p.darts.fromFile) p.darts = stitchedDarts(p, stitches).map((d) => ({ id: nid('d'), ...d }));
+    delete p.darts.fromFile;
+  }
   return { panels, stitches, dropped: (pat.stitches || []).length - stitches.length };
 }
 export function loadGarmentCode(o, srcName, text, meta) {
@@ -98,6 +132,7 @@ export function loadGarmentCode(o, srcName, text, meta) {
     id: nid('p'),
     name: p.name,
     edges: p.edges,
+    darts: p.darts,
     tint: app.tintN++ % TINTS.length,
     place: p.place,
     label: p.label,
@@ -128,6 +163,7 @@ export function loadGarmentCode(o, srcName, text, meta) {
     toast(
       `Loaded ${panels.length} panels and ${r.stitches.length} stitches.${r.dropped ? ` ${r.dropped} stitches referenced missing edges and were skipped.` : ''}`,
     );
+  analyzeLoaded(!meta);
 }
 export function relCoord(c, a, b) {
   const e = sub(b, a),
@@ -170,6 +206,24 @@ export function buildSpec() {
       rotation: p.place.rot.map(r4),
       vertices: verts.map((v) => [r4(v[0]), r4(v[1])]),
       edges,
+      ...(p.darts && p.darts.length
+        ? {
+            darts: p.darts.map((d) => {
+              const a = L(d.at),
+                b = L(add(d.at, [Math.cos(d.cut), Math.sin(d.cut)]));
+              return {
+                position: [r4(a[0]), r4(a[1])],
+                defect: r4(d.defect / DEG),
+                cut_angle: r4(Math.atan2(b[1] - a[1], b[0] - a[0]) / DEG),
+                ...(d.legs ? { legs: d.legs.map((e) => p.edges.findIndex((x) => x.eid === e)) } : {}),
+                settings: Object.fromEntries(
+                  DART_KEYS.filter(([, key]) => d[key] !== undefined).map(([k, key]) => [k, d[key]]),
+                ),
+              };
+            }),
+          }
+        : {}),
+      ...(intrinsicBlock(p) ? { intrinsic: intrinsicBlock(p) } : {}),
       ...(p.label ? { label: p.label } : {}),
     };
   }

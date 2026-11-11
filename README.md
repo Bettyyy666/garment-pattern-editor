@@ -12,10 +12,14 @@ Planned: more design operations and a simulation view that shows the garment on 
 No build step. ES modules need to be served over HTTP (opening `index.html` from disk won't work):
 
 ```bash
-npm start            # npx http-server on http://localhost:8000
-# or
-python3 -m http.server 8000
+git submodule update --init   # once: fetches intrinsic-dart into server/intrinsic-dart
+npm start                     # editor + dart solver on http://localhost:8000 (needs uv; Python 3.13)
+npm run start:static          # editor only (no dart solving), npx http-server
 ```
+
+Darts are solved by [intrinsic-dart](https://github.com/panangam/intrinsic-dart)'s own Python code, run by
+`server/dart_server.py`; the browser only renders the result. Without the server the editor still works, and
+the dart dialog says the solver is not running.
 
 For development tooling: `npm install`, then `npm run lint` and `npm run format`.
 See [CLAUDE.md](CLAUDE.md) for architecture, conventions and how to add features.

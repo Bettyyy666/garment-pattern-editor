@@ -4,6 +4,7 @@
 //   button  – selector of its button in index.html
 //   key     – optional single-key shortcut
 //   run     – function called on click / shortcut (push history, mutate app.state, renderAll)
+import { addDart } from './dart.js';
 import { insertGusset } from './gusset.js';
 import { doSplit } from './split.js';
 import { delSel, duplicate, mirror, rotate } from './transform.js';
@@ -11,6 +12,7 @@ import { delSel, duplicate, mirror, rotate } from './transform.js';
 export const OPERATIONS = [
   { id: 'split', button: '#op-split', key: 's', run: doSplit },
   { id: 'gusset', button: '#op-gusset', key: 'g', run: insertGusset },
+  { id: 'dart', button: '#op-dart', key: 'd', run: addDart },
   { id: 'mirror', button: '#op-mirror', key: 'm', run: mirror },
   { id: 'rotate', button: '#op-rotate', key: 'r', run: rotate },
   { id: 'duplicate', button: '#op-dup', run: duplicate },

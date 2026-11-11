@@ -58,13 +58,30 @@
             </svg>
           </button>
         </div>
+        <div class="seg" role="group" aria-label="View">
+          <button class="btn" id="view-2d" aria-pressed="true" title="2D pattern view">2D</button>
+          <button
+            class="btn"
+            id="view-3d"
+            aria-pressed="false"
+            title="3D view: panels placed as in the specification"
+          >
+            3D
+          </button>
+        </div>
         <button class="btn" id="fit" title="Fit all panels (F)">Fit</button>
         <label class="btn" for="file" title="Open a PNG pattern image or a GarmentCode specification JSON"
           >Open file</label
         >
         <button class="btn primary" id="save" title="Save edits into the specification (Ctrl+S)">Save</button>
         <button class="btn" id="io">Export JSON</button>
-        <button class="btn hide-sm" id="reset">Reset sample</button>
+        <button
+          class="btn hide-sm"
+          id="reset"
+          title="Load the default garment (examples/default_specification.json)"
+        >
+          Reset to default
+        </button>
       </header>
 
       <nav class="tools" aria-label="Tools">
@@ -156,6 +173,7 @@
 
       <main>
         <svg id="canvas" aria-label="Pattern canvas"><g id="world"></g></svg>
+        <svg id="view3d" aria-label="3D view of panel placement"></svg>
         <div class="status">
           <span class="chip" id="hint"></span>
           <span class="chip mono" id="pos">x — y —</span>
@@ -186,7 +204,7 @@
             >
           </label>
           <input type="file" id="file" accept=".png,.jpg,.jpeg,.webp,.json,image/*,application/json" hidden />
-          <p class="hint-text" id="src-info">Showing the built-in bodice sample.</p>
+          <p class="hint-text" id="src-info">Loading the default garment…</p>
         </section>
         <section>
           <h2>Specification</h2>
@@ -242,6 +260,20 @@
             </div>
           </div>
           <p class="hint-text" id="gusset-hint"></p>
+          <button class="btn primary" id="op-dart" title="Add dart (D)">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M8 3l4 14 4-14" />
+            </svg>
+            Add dart
+          </button>
+          <p class="hint-text" id="dart-hint"></p>
           <div class="op-grid">
             <button class="btn" id="op-mirror">Mirror</button>
             <button class="btn" id="op-rotate">Rotate 90°</button>
@@ -327,6 +359,92 @@
           <button class="btn" id="tr-add">Add to pattern</button>
           <button class="btn primary" id="tr-replace">Replace pattern</button>
         </div>
+      </div>
+    </div>
+    <div class="modal" id="dartdlg" hidden>
+      <div class="modal-card dart-card" role="dialog" aria-labelledby="dd-title">
+        <div class="dd-head">
+          <h3 id="dd-title">Single-cone dart · <span id="dd-panel"></span></h3>
+          <button class="btn primary" id="dd-done">Done</button>
+        </div>
+        <div class="dd-controls">
+          <label class="dd-f"
+            >Defect <input id="dd-defect" type="range" min="0" max="90" step="1" /><b id="dd-defect-v"></b
+          ></label>
+          <label class="dd-f"
+            >Angle <input class="input" id="dd-angle" type="number" min="0" step="0.05"
+          /></label>
+          <label class="dd-f"
+            >Scale <input class="input" id="dd-scale" type="number" min="0" step="0.05"
+          /></label>
+          <label class="dd-f"
+            >Edge length <input class="input" id="dd-length" type="number" min="0" step="0.05"
+          /></label>
+          <label class="dd-f"
+            >Smoothness <input class="input" id="dd-smooth" type="number" min="0" step="0.05"
+          /></label>
+          <button class="btn" id="dd-reset">Reset</button>
+        </div>
+        <div class="dd-panes">
+          <div class="dd-pane">
+            <div class="dd-bar">
+              <select class="input" id="dd-viz">
+                <option value="angle">Angle distortion</option>
+                <option value="scale">Scale factor</option>
+                <option value="length">Edge-length distortion</option>
+              </select>
+              <label><input type="checkbox" id="dd-mesh" /> Mesh measurements</label>
+              <label><input type="checkbox" id="dd-coords" /> Vertex coordinates</label>
+            </div>
+            <div class="dd-bar">
+              <label><input type="radio" name="dd-lock" value="angle" checked /> Edit angle locks</label>
+              <label><input type="radio" name="dd-lock" value="scale" /> Edit scale locks</label>
+            </div>
+            <div class="dd-title" id="dd-ref-title"></div>
+            <svg class="dd-svg" id="dd-ref"></svg>
+            <div class="dd-cbar">
+              <span id="dd-ref-min"></span><i id="dd-ref-grad"></i><span id="dd-ref-max"></span>
+            </div>
+          </div>
+          <div class="dd-pane">
+            <div class="dd-bar">
+              <label
+                >Cut length mode
+                <select class="input" id="dd-cutmode">
+                  <option value="preserve">Preserve (Euclidean)</option>
+                  <option value="optimize">Optimize</option>
+                  <option value="ideal">Ideal cone</option>
+                </select></label
+              >
+              <label
+                >Cut length weight
+                <input class="input" id="dd-cutw" type="number" min="0" step="0.05" style="width: 72px"
+              /></label>
+            </div>
+            <div class="dd-title">Developed boundary · signed length adjustment</div>
+            <svg class="dd-svg" id="dd-dev"></svg>
+            <div class="dd-cbar">
+              <span id="dd-dev-min"></span><i id="dd-dev-grad"></i><span id="dd-dev-max"></span>
+            </div>
+          </div>
+          <div class="dd-pane">
+            <div class="dd-bar">
+              <label><input type="checkbox" id="dd-edges" /> Mesh edges</label>
+              <button class="btn" id="dd-fit3d">Fit view</button>
+            </div>
+            <div class="dd-title" id="dd-3d-title">Cone surface</div>
+            <svg class="dd-svg dd-3d" id="dd-3d"></svg>
+            <div class="hint-text" id="dd-3d-info"></div>
+          </div>
+        </div>
+        <p class="dd-stats" id="dd-stats"></p>
+        <p class="dd-stats" id="dd-status"></p>
+        <p class="hint-text">
+          Right-click toggles a vertex lock; Shift-drag locks, Ctrl-drag unlocks. Gold circles mark angle
+          locks; blue squares mark scale locks. Drag the cone or ray handle to move it. Drag the 3D view to
+          orbit, Ctrl-drag to pan, wheel to zoom. Cut length mode controls the developed cut length; this is a
+          lumped boundary approximation.
+        </p>
       </div>
     </div>
     <script type="module" src="src/main.js"></script>

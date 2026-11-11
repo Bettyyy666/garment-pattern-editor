@@ -5,9 +5,10 @@
   "description": "Browser-based editor for 2D garment sewing patterns (GarmentCode specification JSON).",
   "type": "module",
   "scripts": {
-    "start": "npx --yes http-server -c-1 -p 8000 .",
+    "start": "uv run --project server python server/dart_server.py --port 8000",
     "lint": "eslint src",
-    "format": "prettier --write \"src/**/*.js\" \"css/**/*.css\" index.html"
+    "format": "prettier --write \"src/**/*.js\" \"css/**/*.css\" index.html",
+    "start:static": "npx --yes http-server -c-1 -p 8000 ."
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
