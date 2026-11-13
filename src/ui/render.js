@@ -2,8 +2,9 @@
 import { STITCH_COLORS, TINTS } from '../config.js';
 import { add, centroid, crSample, mul, norm, pathLen, pointAtFrac, sub } from '../geometry.js';
 import { edgeSample } from '../model/edges.js';
-import { dartResult } from '../io/dart-results.js';
-import { toCanvas } from '../model/dart-solve.js';
+import { dartResult, solvedPose } from '../io/dart-results.js';
+import { panelOutline, toCanvas } from '../model/dart-solve.js';
+import { postCutEdges } from '../model/post-cut.js';
 import { rayCut } from '../model/intrinsic.js';
 import { markPts } from '../model/marks.js';
 import { dPanel, panelPts } from '../model/panels.js';
@@ -22,41 +23,76 @@ export function hoverPt() {
       ? app.snapInfo.pt
       : app.hover;
 }
+// Stitched edges, coloured per stitch. On a darted panel they follow its post-cut outline (the panel as drawn);
+// a sewn dart's own leg stitch has no post-cut edge (the dart is closed there) and is not drawn.
 export function renderStitches(px, EI) {
   let h = '';
-  const selP = app.sel && app.sel.kind === 'panel' ? app.sel.id : null;
+  const selP = app.sel && app.sel.kind === 'panel' ? app.sel.id : null,
+    post = new Map(); // panel id -> { edges: Map eid -> polylines, c: post-cut centroid } | null
+  const onPanel = (L) => {
+    if (!post.has(L.p.id)) {
+      const md = mainDart(L.p),
+        o = md && opening(L.p, md),
+        E = o && postCutEdges(L.p, panelOutline(L.p), o.P, o.cut);
+      post.set(L.p.id, E ? { edges: E, c: centroid([o.at, ...o.P]) } : null);
+    }
+    const pc = post.get(L.p.id);
+    return pc ? { lines: pc.edges.get(L.e.eid) || [], c: pc.c } : { lines: [edgeSample(L.e)], c: null };
+  };
   app.state.stitches.forEach((st, si) => {
     const locs = st.e.map((e) => EI.get(e));
     if (locs.some((x) => !x)) return;
     const col = STITCH_COLORS[si % STITCH_COLORS.length];
     const hi = selP && locs.some((l) => l.p.id === selP);
     locs.forEach((L) => {
-      const P = edgeSample(L.e);
-      h += `<path d="${dPath(P, false)}" fill="none" stroke="${col}" stroke-width="${hi ? 4.5 : 3.2}" stroke-dasharray="${st.cut ? '2 4' : '7 4'}" stroke-linecap="round" vector-effect="non-scaling-stroke" style="pointer-events:none"/>`;
-      const m = pointAtFrac(P, 0.5),
-        c = centroid(panelPts(L.p)),
+      const { lines, c: pcC } = onPanel(L);
+      if (!lines.length) return;
+      for (const P of lines)
+        h += `<path d="${dPath(P, false)}" fill="none" stroke="${col}" stroke-width="${hi ? 4.5 : 3.2}" stroke-dasharray="${st.cut ? '2 4' : '7 4'}" stroke-linecap="round" vector-effect="non-scaling-stroke" style="pointer-events:none"/>`;
+      const P = lines.reduce((a, b) => (pathLen(b) > pathLen(a) ? b : a)),
+        m = pointAtFrac(P, 0.5),
+        c = pcC || centroid(panelPts(L.p)),
         q = add(m, mul(norm(sub(c, m)), px(12)));
       h += `<circle cx="${f3(q[0])}" cy="${f3(q[1])}" r="${px(8.5)}" fill="${col}" style="pointer-events:none"/><text class="stitch-tag" x="${f3(q[0])}" y="${f3(q[1] + px(3.5))}" font-size="${px(si >= 99 ? 8 : 10)}" text-anchor="middle">${si + 1}</text>`;
     });
   });
   return h;
 }
-// One dart: the solved opening (intrinsic-dart develop(): developed outline apex -> c+ ... c- -> apex, placed at
-// the apex and turned by the cut angle), its two legs, and the apex. Before a solve arrives, the reference cut.
+// A dart's solved opening: intrinsic-dart develop()'s developed outline (c+ ... c-), placed at the apex and turned
+// by the cut angle the solve was made for (solvedPose), or null before a solve arrives. Closed through that apex it
+// is the whole post-cut panel: { P, at, cut (develop's cut on the outline), current }.
 const ptxt = (q) => `${f3(q[0])} ${f3(q[1])}`;
+function opening(p, d) {
+  const { res, current } = dartResult(p, d);
+  if (!res || !res.dev) return null;
+  const { at: a, cut } = solvedPose(p, res),
+    t = -cut,
+    c = Math.cos(t),
+    s = Math.sin(t);
+  return {
+    P: res.dev.boundary.map(([x, y]) => add(a, toCanvas([x * c - y * s, x * s + y * c]))),
+    at: a,
+    cut: res.dev.cut,
+    current,
+  };
+}
+// The dart whose post-cut outline stands for a darted panel: the selected dart if it is on the panel, else its
+// first (the same one the 3D view shows as a cone surface).
+const mainDart = (p) => {
+  const D = p.darts || [];
+  return D.find((x) => x.id === app.dartSel) || D[0];
+};
+// One dart: its opening wedge and apex (the opening of the panel's main dart is the panel shape itself; the solver
+// opens one dart at a time, so other darts show only their wedge). Before a solve arrives, the reference cut.
 function renderDart(p, d, px) {
   const a = d.at,
     sel = app.dartSel === d.id,
-    { res, current } = dartResult(p, d);
+    { res, current } = dartResult(p, d),
+    o = opening(p, d);
   let h = '';
-  if (res && res.dev) {
-    const t = -d.cut,
-      c = Math.cos(t),
-      s = Math.sin(t),
-      P = res.dev.boundary.map(([x, y]) => add(a, toCanvas([x * c - y * s, x * s + y * c]))),
-      cls = `dart-open${sel ? ' sel' : ''}${current ? '' : ' stale'}`;
-    h += `<path class="${cls}" d="M${ptxt(a)}L${P.map(ptxt).join('L')}Z" stroke-width="${sel ? 2 : 1.3}" vector-effect="non-scaling-stroke" style="pointer-events:none"/>`;
-    h += `<path class="dart-wedge${current ? '' : ' stale'}" d="M${ptxt(P[0])}L${ptxt(a)}L${ptxt(P[P.length - 1])}Z" stroke-width="1.6" vector-effect="non-scaling-stroke" style="pointer-events:none"/>`;
+  if (o) {
+    const P = o.P;
+    h += `<path class="dart-wedge${current ? '' : ' stale'}" d="M${ptxt(P[0])}L${ptxt(o.at)}L${ptxt(P[P.length - 1])}Z" stroke-width="1.6" vector-effect="non-scaling-stroke" style="pointer-events:none"/>`;
   } else {
     const r = rayCut(panelPts(p), a, d.cut);
     if (r)
@@ -112,7 +148,20 @@ export function render() {
       d = dPanel(p);
     if (app.opts.sa)
       h += `<path class="sa-band" d="${d}" fill="none" stroke-width="2" stroke-linejoin="round" mask="url(#mk-${p.id})"/>`;
-    h += `<path class="panel-shape${isSel ? ' sel' : ''}" data-pid="${p.id}" d="${d}" style="fill:${TINTS[p.tint % TINTS.length]};fill-opacity:${fo}" stroke-width="${isSel ? 2.6 : 1.5}" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>`;
+    const md = mainDart(p),
+      post = md && opening(p, md),
+      fill = `fill:${TINTS[p.tint % TINTS.length]};fill-opacity:${fo}`;
+    if (!post)
+      h += `<path class="panel-shape${isSel ? ' sel' : ''}" data-pid="${p.id}" d="${d}" style="${fill}" stroke-width="${isSel ? 2.6 : 1.5}" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>`;
+    else {
+      // Darted panel: the post-cut outline (what the solver outputs) is the panel. The pre-cut outline still takes
+      // clicks over its whole area (transparent, underneath) and is drawn on top as a faint dashed reference
+      // (View > Pre-cut outline hides the reference).
+      h += `<path class="panel-shape precut-hit" data-pid="${p.id}" d="${d}"/>`;
+      h += `<path class="panel-shape postcut${isSel ? ' sel' : ''}${post.current ? '' : ' stale'}" data-pid="${p.id}" d="M${ptxt(post.at)}L${post.P.map(ptxt).join('L')}Z" style="${fill}" stroke-width="${isSel ? 2.6 : 1.5}" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>`;
+      if (app.opts.precut)
+        h += `<path class="precut${isSel ? ' sel' : ''}" d="${d}" stroke-width="1.2" stroke-dasharray="5 4" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>`;
+    }
     if (app.opts.verts)
       p.edges.forEach(
         (e) => (h += `<circle class="vtx" cx="${f3(e.a[0])}" cy="${f3(e.a[1])}" r="${px(2.2)}"/>`),

@@ -14,8 +14,8 @@ export const app = {
   snapInfo: null,
   spaceDown: false,
   view: { s: 12, ox: 0, oy: 0 },
-  view3d: { on: true, yaw: 0.55, el: 0.3, c: [0, 0], half: 100, fitted: false }, // 3D placement view camera
-  opts: { grid: true, sa: false, measure: true, verts: false, stitch: true, under: true },
+  view3d: { on: true, yaw: 0.55, el: 0.3, c: [0, 0], half: 100, fitted: false, lift: 0 }, // 3D view camera; lift: cm every panel is moved up (slider)
+  opts: { grid: true, sa: false, measure: true, verts: false, stitch: true, under: true, precut: true },
   undoStack: [],
   redoStack: [],
   uid: 1,
@@ -27,6 +27,8 @@ export const app = {
   traceRes: null,
   downloads: null,
   dartSel: null, // id of the dart being edited in the Darts section (highlighted in 2D)
+  body: null, // body the 3D view places panels on (io/body.js): mesh, trunk slices, limb axes, levels; not undoable
+  bodyNote: '', // why no body is shown, for the 3D hint
   dartView: null, // open single-cone dart dialog: { pid, did, view options, camera, snap }
 };
 export const nid = (p) => p + app.uid++;

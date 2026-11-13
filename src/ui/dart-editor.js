@@ -7,6 +7,7 @@ import { fromLocal, toLocal } from '../model/panels.js';
 import { app, pushHistory } from '../state.js';
 import { $ } from './dom.js';
 import { openDart } from './dart-view.js';
+import { deleteDart } from '../operations/dart.js';
 import { renderAll } from './inspector.js';
 import { render } from './render.js';
 import { esc } from '../util.js';
@@ -189,10 +190,5 @@ export function wireDarts(box, p) {
     for (const [k, v] of Object.entries(DART_DEFAULTS)) if (k !== 'defect') d[k] = Array.isArray(v) ? [] : v;
     renderAll();
   });
-  on('dp-del', () => {
-    pushHistory();
-    p.darts = p.darts.filter((x) => x !== d);
-    app.dartSel = null;
-    renderAll();
-  });
+  on('dp-del', () => deleteDart(p, d));
 }

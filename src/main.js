@@ -6,6 +6,7 @@ import { initKeyboard } from './ui/keyboard.js';
 import { initDartView } from './ui/dart-view.js';
 import { initSections } from './ui/sections.js';
 import { initView3d } from './ui/view3d.js';
+import { initBody } from './io/body.js';
 import { loadGarmentCode } from './io/garmentcode.js';
 import { commitTrace, runTrace } from './io/image-trace.js';
 import { openFile } from './io/open-file.js';
@@ -76,6 +77,7 @@ $('#plist').addEventListener('click', (e) => {
   ['verts', 'opt-verts'],
   ['stitch', 'opt-stitch'],
   ['under', 'opt-under'],
+  ['precut', 'opt-precut'],
 ].forEach(([k, id]) =>
   $('#' + id).addEventListener('change', (e) => {
     app.opts[k] = e.target.checked;
@@ -160,6 +162,7 @@ initPointer();
 initKeyboard();
 initDartView();
 initView3d();
+initBody();
 initDownloads();
 
 new ResizeObserver(() => {

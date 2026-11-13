@@ -7,7 +7,7 @@
   "scripts": {
     "start": "uv run --project server python server/dart_server.py --port 8000",
     "lint": "eslint src",
-    "format": "prettier --write \"src/**/*.js\" \"css/**/*.css\" index.html",
+    "format": "prettier --write --single-quote --print-width 110 --object-wrap collapse \"src/**/*.js\" \"css/**/*.css\" index.html",
     "start:static": "npx --yes http-server -c-1 -p 8000 ."
   },
   "devDependencies": {

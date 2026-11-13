@@ -6,9 +6,11 @@ Serves the static editor and runs intrinsic-dart's single-cone dart solver for i
   update_solution:  model.optimize(point, defect, regularization) -> develop(...) -> cone_surface(...)
   analyze:          ConeDartModel(...) on a panel's reference outline (its darts closed) -> original_lengths,
                     original_turns; ray_cut(vertices, apex, cut_angle) for each dart read from the pattern
+  panel mesh:       triangulate_polygon(outline) of a flat panel, for the 3D view to bend it around the body
+  bodies:           body meshes + measurements for the 3D simulation initializer (server/body.py)
 The browser only renders the JSON this returns.
 
-Run:  uv run --project server python server/dart_server.py [--port 8000]
+Run:  uv run --project server python server/dart_server.py [--port 8000] [--bodies DIR] [--segmentation FILE]
 """
 
 import argparse
@@ -30,6 +32,8 @@ from intrinsic_dart.cone_dart.geometry import ConeDartError, ray_cut  # noqa: E4
 from intrinsic_dart.cone_dart.model import ConeDartModel  # noqa: E402
 from intrinsic_dart.cone_dart.surface import cone_surface  # noqa: E402
 from intrinsic_dart.triangulation import triangulate_polygon  # noqa: E402
+
+from body import BodyError, BodyLibrary  # noqa: E402
 
 SOLVER_ERRORS = (ConeDartError, np.linalg.LinAlgError, ValueError, RuntimeError)
 _models = OrderedDict()  # outline bytes -> ConeDartModel (the demo builds one per loaded outline)
@@ -91,6 +95,16 @@ def analyze(req):
     return out
 
 
+def panel_mesh(req):
+    """Quality triangulation of a flat panel outline (Steiner points inside), triangles of about max_area."""
+    vertices = np.array(req["outline"], dtype=float)
+    x, y = vertices.T
+    area = 0.5*abs(np.dot(x, np.roll(y, -1)) - np.dot(y, np.roll(x, -1)))
+    rel = min(0.05, max(1e-3, float(req.get("max_area", 6.0))/max(area, 1e-9)))
+    points, triangles, _, _ = triangulate_polygon(vertices, max_area_rel=rel, min_angle=25.)
+    return dict(points=points.tolist(), triangles=triangles.tolist())
+
+
 def solve(req):
     model = get_model(np.array(req["outline"], dtype=float))
     out = model_info(model)
@@ -143,6 +157,8 @@ def solve(req):
 
 
 class Handler(SimpleHTTPRequestHandler):
+    bodies = BodyLibrary(None, None)
+
     def end_headers(self):
         self.send_header("Cache-Control", "no-store")
         super().end_headers()
@@ -158,10 +174,24 @@ class Handler(SimpleHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/api/dart/health":
             return self.send_json(200, dict(ok=True, numpy=np.__version__))
+        if self.path == "/api/body/list":
+            return self.send_json(200, self.bodies.list())
+        if self.path.startswith("/api/body/"):
+            body = self.bodies.get(self.path[len("/api/body/"):])
+            if body is None:
+                return self.send_json(404, dict(error="no such body"))
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return None
         return super().do_GET()
 
     def do_POST(self):
-        handler = {"/api/dart/solve": solve, "/api/dart/analyze": analyze}.get(self.path)
+        handler = {"/api/dart/solve": solve, "/api/dart/analyze": analyze, "/api/panel/mesh": panel_mesh}.get(self.path)
+        if self.path == "/api/body/upload":
+            handler = self.upload_body
         if handler is None:
             return self.send_json(404, dict(error="not found"))
         try:
@@ -174,6 +204,13 @@ class Handler(SimpleHTTPRequestHandler):
             return self.send_json(400, dict(error=f"bad request: {error}"))
         self.send_json(200, result)
 
+    def upload_body(self, req):
+        try:
+            body_id = self.bodies.upload(req.get("name"), req["obj"], req.get("yaml"))
+        except BodyError as error:
+            return dict(error=str(error))
+        return dict(id=body_id)
+
     def log_message(self, fmt, *args):
         # Log solver requests and server errors only; static file requests (and their 404s) stay quiet.
         text = fmt % args
@@ -183,9 +220,18 @@ class Handler(SimpleHTTPRequestHandler):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    # Default body dataset: the sibling body2garmentCode checkout, if it is there.
+    sibling = HERE.parent.parent / "body2garmentCode"
     parser.add_argument("--port", type=int, default=8000)
+    parser.add_argument("--bodies", default=sibling / "inputs" / "5000_body_shapes_and_measures",
+                        help="body dataset with meshes/*.obj and measurements/*.yaml")
+    parser.add_argument("--segmentation", help="GarmentCode ggg_body_segmentation.json",
+                        default=sibling / "GarmentCode" / "assets" / "bodies" / "ggg_body_segmentation.json")
     args = parser.parse_args()
     root = HERE.parent
+    Handler.bodies = BodyLibrary(args.bodies, args.segmentation)
+    if not Handler.bodies.available():
+        print(f"No body dataset at {args.bodies} (or segmentation missing): the 3D view shows no body.", flush=True)
     server = ThreadingHTTPServer(("127.0.0.1", args.port), partial(Handler, directory=str(root)))
     print(f"Garment pattern editor + dart solver on http://localhost:{args.port}", flush=True)
     server.serve_forever()

@@ -40,16 +40,27 @@ async function pump() {
     d = p && (p.darts || []).find((x) => x.id === did);
   if (!d || keyOf(p, d) !== job.key) return pump();
   busy = true;
+  // The pose this solve is for, relative to the panel's first vertex (which moves with the panel): until the next
+  // solve arrives, the result is drawn here, not at the apex being dragged (which would shake the whole outline).
+  const o = p.edges[0].a,
+    pose = { at: [d.at[0] - o[0], d.at[1] - o[1]], cut: d.cut };
   let res;
   try {
     res = await solveDart(p, { ...d });
   } finally {
     busy = false;
   }
+  res.pose = pose;
   cache.set(did, { key: job.key, res });
   render();
   refreshDartReadout();
   pump();
+}
+
+// Apex (canvas) and cut angle a solve was made for, on panel p as it is now.
+export function solvedPose(p, res) {
+  const o = p.edges[0].a;
+  return { at: [o[0] + res.pose.at[0], o[1] + res.pose.at[1]], cut: res.pose.cut };
 }
 
 // The latest solve of dart d on panel p: { res, current } (res null until one arrives). A missing or out-of-date

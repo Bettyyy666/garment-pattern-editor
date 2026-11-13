@@ -79,3 +79,23 @@ export function insertDart(p, at, toward) {
   toast(`Added a ${DART_DEFECT_DEG}° dart to ${p.name}. Adjust the opening under Selection › Darts.`);
   return null;
 }
+
+// Delete dart d of panel p (Erase tool on its apex in 2D or 3D, or the Darts block's Delete button). A sewn dart's
+// stitched legs stay in the pattern; only the cone dart goes.
+export function deleteDart(p, d) {
+  pushHistory();
+  p.darts = p.darts.filter((x) => x !== d);
+  if (app.dartSel === d.id) app.dartSel = null;
+  renderAll();
+  toast(`Deleted a ${((d.defect * 180) / Math.PI).toFixed(0)}° dart from ${p.name}.`);
+}
+
+// Move dart d (apex and cut together, cut angle kept) to apex `at` while dragging it in 2D or 3D. The apex must stay
+// inside the panel with its cut still reaching the edge; otherwise it stays at its last valid position. Returns
+// whether it moved. The caller re-renders and records one undo step for the whole drag.
+export function moveDartTo(p, d, at) {
+  const V = panelPts(p);
+  if (!pip(at, V) || !rayCut(V, at, d.cut)) return false;
+  d.at = at;
+  return true;
+}

@@ -199,10 +199,55 @@
           </div>
         </section>
         <section class="pane pane3d" aria-label="3D placement">
-          <svg id="view3d" aria-label="3D view of panel placement"></svg>
-          <span class="chip pane-tag">3D placement</span>
+          <canvas id="view3d" aria-label="3D view: panels placed by name around the body"></canvas>
+          <span class="chip pane-tag">3D view</span>
+          <div class="lift3d" title="Move every panel up or down on the body (3D view only)">
+            <span class="lift3d-label">Height</span>
+            <output id="lift3d-val" for="lift3d">0.0<br />cm</output>
+            <input
+              type="range"
+              id="lift3d"
+              min="-40"
+              max="40"
+              step="0.5"
+              value="0"
+              aria-label="Panel height offset"
+            />
+            <button
+              class="btn icon"
+              id="lift3d-reset"
+              title="Reset the height to 0 cm"
+              aria-label="Reset height"
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path d="M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8" />
+                <path d="M3 3v5h5" />
+              </svg>
+            </button>
+          </div>
           <div class="status">
             <span class="chip" id="hint3d"></span>
+            <select
+              class="input"
+              id="body3d"
+              title="Body the panels are placed on (server/body.py)"
+              aria-label="Body"
+            ></select>
+            <button
+              class="btn"
+              id="body-load"
+              title="Target body: an OBJ in GarmentCode body topology, plus its measurements .yaml (optional)"
+            >
+              Load body…
+            </button>
+            <input type="file" id="body-file" accept=".obj,.yaml,.yml" multiple hidden />
             <button class="btn" id="fit3d" title="Fit the 3D view">Fit 3D</button>
           </div>
         </section>
@@ -335,6 +380,11 @@
           <label class="check"><input type="checkbox" id="opt-measure" checked /> Line lengths</label>
           <label class="check"><input type="checkbox" id="opt-verts" /> Vertices</label>
           <label class="check"><input type="checkbox" id="opt-stitch" checked /> Stitches</label>
+          <label
+            class="check"
+            title="Darted panels show their post-cut outline (the solver output); this adds the original outline as a dashed reference"
+            ><input type="checkbox" id="opt-precut" checked /> Pre-cut outline (darted panels)</label
+          >
           <label class="check"><input type="checkbox" id="opt-under" checked /> Source image underlay</label>
         </section>
       </aside>

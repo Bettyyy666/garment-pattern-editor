@@ -22,6 +22,7 @@
   --lock-blue: #1d8fc4;
   --cone-face: #e8a0b4;
   --pocket-face: #8fb3e8;
+  --body-face: #c9b8a8;
   --dd-pane: #f7f8f8;
   --dd-ref: #8a8f8d;
   --turn-pos: #2aa597;
@@ -53,6 +54,7 @@
     --lock-blue: #55caff;
     --cone-face: #e8a0b4;
     --pocket-face: #8fb3e8;
+    --body-face: #8f8379;
     --dd-pane: #121816;
     --dd-ref: #aaaaaa;
     --turn-pos: #66d9cc;
@@ -83,6 +85,7 @@
   --lock-blue: #55caff;
   --cone-face: #e8a0b4;
   --pocket-face: #8fb3e8;
+  --body-face: #8f8379;
   --dd-pane: #121816;
   --dd-ref: #aaaaaa;
   --turn-pos: #66d9cc;
@@ -272,8 +275,62 @@ main.show3d .pane3d {
   top: 10px;
   pointer-events: none;
 }
-.status .btn {
+.status .btn,
+.status select {
   pointer-events: auto;
+}
+/* 3D height slider: a narrow, translucent vertical bar at the top right of the 3D pane (value on top, reset button
+   at the bottom). */
+.lift3d {
+  position: absolute;
+  right: 12px;
+  top: 10px;
+  width: 38px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  background: color-mix(in srgb, var(--surface) 55%, transparent);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  color: var(--fg);
+  border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  border-radius: 8px;
+  padding: 6px 0;
+  font-size: 11px;
+}
+.lift3d-label {
+  color: var(--muted);
+  font-size: 10px;
+}
+.lift3d output {
+  text-align: center;
+  line-height: 1.2;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+/* Vertical range: min at the bottom, max at the top. */
+.lift3d input {
+  writing-mode: vertical-lr;
+  direction: rtl;
+  width: 16px;
+  height: min(180px, 32vh);
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: ns-resize;
+}
+.lift3d .btn.icon {
+  width: 24px;
+  height: 24px;
+  min-height: 0;
+  background: transparent;
+}
+#body3d {
+  width: auto;
+  max-width: 220px;
+  flex: none;
 }
 #canvas {
   position: absolute;
@@ -791,6 +848,24 @@ svg text {
 .panel-shape.sel {
   stroke: var(--sel);
 }
+/* Darted panels: the pre-cut outline is a faint dashed reference (transparent fill so its area still takes clicks),
+   the post-cut outline is the panel. */
+.panel-shape.precut-hit {
+  fill: transparent;
+  stroke: none;
+}
+.precut {
+  fill: none;
+  stroke: color-mix(in srgb, var(--ink) 50%, var(--paper));
+  stroke-opacity: 0.9;
+  pointer-events: none;
+}
+.precut.sel {
+  stroke: var(--sel);
+}
+.panel-shape.postcut.stale {
+  fill-opacity: 0.55;
+}
 .panel-label {
   fill: var(--ink);
   opacity: 0.75;
@@ -862,20 +937,11 @@ svg text {
 .dart-apex.sel {
   fill: var(--dart-gold);
 }
-.dart-open {
-  fill: none;
-  stroke: var(--dart-gold);
-  stroke-dasharray: 6 3;
-}
-.dart-open.sel {
-  stroke-dasharray: none;
-}
 .dart-wedge {
   fill: color-mix(in srgb, var(--danger) 22%, transparent);
   stroke: var(--danger);
   stroke-linejoin: round;
 }
-.dart-open.stale,
 .dart-wedge.stale {
   opacity: 0.4;
 }

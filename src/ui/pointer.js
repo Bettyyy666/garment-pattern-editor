@@ -1,8 +1,7 @@
 // Pointer input on the canvas: select, drag, draw, pan, pinch, wheel zoom.
-import { dist, len, pip, sub } from '../geometry.js';
-import { rayCut } from '../model/intrinsic.js';
+import { dist, len, sub } from '../geometry.js';
 import { addMark, findPanelFor } from '../model/marks.js';
-import { panelPts, translatePanel } from '../model/panels.js';
+import { translatePanel } from '../model/panels.js';
 import { app, getMark, getPanel, pushHistory, snapshot } from '../state.js';
 import { $, svg } from './dom.js';
 import { renderAll, renderInspector } from './inspector.js';
@@ -10,7 +9,7 @@ import { render } from './render.js';
 import { placePoint, snap } from './snapping.js';
 import { toast } from './toast.js';
 import { finishDraft } from './tools.js';
-import { insertDart } from '../operations/dart.js';
+import { deleteDart, insertDart, moveDartTo } from '../operations/dart.js';
 import { rect, toWorld, zoomAt } from './viewport.js';
 
 export const pointers = new Map();
@@ -57,6 +56,12 @@ export function initPointer() {
     // Pressing a dart apex (any tool but erase) selects that dart for editing; dragging it moves the whole dart
     // (apex and cut together, the cut angle kept) inside its panel.
     const dt = e.target.closest && e.target.closest('[data-did]');
+    if (dt && app.tool === 'erase') {
+      const p = getPanel(dt.dataset.dpid),
+        d = p && p.darts.find((x) => x.id === dt.dataset.did);
+      if (d) deleteDart(p, d);
+      return;
+    }
     if (dt && app.tool !== 'erase' && !(app.draft && app.draft.type === 'dart')) {
       const p = getPanel(dt.dataset.dpid),
         d = p && p.darts.find((x) => x.id === dt.dataset.did);
@@ -180,12 +185,8 @@ export function initPointer() {
       if (app.drag.mode === 'dart') {
         const p = getPanel(app.drag.pid),
           d = p && p.darts.find((x) => x.id === app.drag.did),
-          at = sub(w, app.drag.grab),
-          V = d && panelPts(p);
-        // The apex must stay inside the panel with its cut still reaching the edge; otherwise it stops at the
-        // last valid position.
-        if (d && pip(at, V) && rayCut(V, at, d.cut)) {
-          d.at = at;
+          at = sub(w, app.drag.grab);
+        if (d && moveDartTo(p, d, at)) {
           app.drag.moved = true;
           render();
         }
